@@ -1,0 +1,12 @@
+<launch>
+
+  <!-- Upload World -->
+  <include file="$(find uuv_gazebo_worlds)/launch/lake.launch"/>
+
+  <!-- Upload Gladlaks -->
+  <include file="$(find gladlaks_description)/launch/upload.launch"/>
+
+  <!-- Start the thruster manager -->
+  <include file="$(find gladlaks_control)/launch/start_thruster_manager.launch"/>
+
+</launch>
