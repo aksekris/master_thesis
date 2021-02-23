@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+    <!-- Adding the thruster units with the macro created in snippets.xacro -->
+    <!--
+    Important:
+        - The thruster IDs must be given as integers and must be unique to each thruster unit
+        - The thruster pose in the <origin> block is relative to the body's center of mass. Be
+          aware that Gazebo does not use the SNAME convention per default.
+    -->
+
+    <xacro:thruster_macro robot_namespace="${namespace}" thruster_id="${props['thrusters']['map'][0]}">
+        <origin xyz="${props['thrusters']['positions'][0][0]} ${props['thrusters']['positions'][0][1]} ${props['thrusters']['positions'][0][2]}" rpy="${props['thrusters']['orientations'][0][0]} ${props['thrusters']['orientations'][0][1]} ${props['thrusters']['orientations'][0][2]}" />
+    </xacro:thruster_macro>
+
+    <xacro:thruster_macro robot_namespace="${namespace}" thruster_id="${props['thrusters']['map'][1]}">
+        <origin xyz="${props['thrusters']['positions'][1][0]} ${props['thrusters']['positions'][1][1]} ${props['thrusters']['positions'][1][2]}" rpy="${props['thrusters']['orientations'][1][0]} ${props['thrusters']['orientations'][1][1]} ${props['thrusters']['orientations'][1][2]}" />
+    </xacro:thruster_macro>
+
+    <xacro:thruster_macro robot_namespace="${namespace}" thruster_id="${props['thrusters']['map'][2]}">
+        <origin xyz="${props['thrusters']['positions'][2][0]} ${props['thrusters']['positions'][2][1]} ${props['thrusters']['positions'][2][2]}" rpy="${props['thrusters']['orientations'][2][0]} ${props['thrusters']['orientations'][2][1]} ${props['thrusters']['orientations'][2][2]}" />
+    </xacro:thruster_macro>
+
+    <xacro:thruster_macro robot_namespace="${namespace}" thruster_id="${props['thrusters']['map'][3]}">
+        <origin xyz="${props['thrusters']['positions'][3][0]} ${props['thrusters']['positions'][3][1]} ${props['thrusters']['positions'][3][2]}" rpy="${props['thrusters']['orientations'][3][0]} ${props['thrusters']['orientations'][3][1]} ${props['thrusters']['orientations'][3][2]}" />
+    </xacro:thruster_macro>
+
+    <xacro:thruster_macro robot_namespace="${namespace}" thruster_id="${props['thrusters']['map'][4]}">
+        <origin xyz="${props['thrusters']['positions'][4][0]} ${props['thrusters']['positions'][4][1]} ${props['thrusters']['positions'][4][2]}" rpy="${props['thrusters']['orientations'][4][0]} ${props['thrusters']['orientations'][4][1]} ${props['thrusters']['orientations'][4][2]}" />
+    </xacro:thruster_macro>
+
+    <xacro:thruster_macro robot_namespace="${namespace}" thruster_id="${props['thrusters']['map'][5]}">
+        <origin xyz="${props['thrusters']['positions'][5][0]} ${props['thrusters']['positions'][5][1]} ${props['thrusters']['positions'][5][2]}" rpy="${props['thrusters']['orientations'][5][0]} ${props['thrusters']['orientations'][5][1]} ${props['thrusters']['orientations'][5][2]}" />
+    </xacro:thruster_macro>
+
+    <xacro:thruster_macro robot_namespace="${namespace}" thruster_id="${props['thrusters']['map'][6]}">
+        <origin xyz="${props['thrusters']['positions'][6][0]} ${props['thrusters']['positions'][6][1]} ${props['thrusters']['positions'][6][2]}" rpy="${props['thrusters']['orientations'][6][0]} ${props['thrusters']['orientations'][6][1]} ${props['thrusters']['orientations'][6][2]}" />
+    </xacro:thruster_macro>
+
+    <xacro:thruster_macro robot_namespace="${namespace}" thruster_id="${props['thrusters']['map'][7]}">
+        <origin xyz="${props['thrusters']['positions'][7][0]} ${props['thrusters']['positions'][7][1]} ${props['thrusters']['positions'][7][2]}" rpy="${props['thrusters']['orientations'][7][0]} ${props['thrusters']['orientations'][7][1]} ${props['thrusters']['orientations'][7][2]}" />
+    </xacro:thruster_macro>
+
+</robot>
