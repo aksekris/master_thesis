@@ -37,7 +37,7 @@
 
   <!-- Launch control system -->
   <include file="$(find gladlaks_control)/launch/gladlaks_control_system.launch">
-    <arg name="namespace" value="$(arg namespace)/control_system)"/>
+    <arg name="namespace" value="$(arg namespace)/control_system"/>
   </include> 
 
   <!-- Launch RViz -->
