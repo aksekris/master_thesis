@@ -24,7 +24,7 @@
   <!-- Vehicle's namespace -->
   <arg name="namespace" default="gladlaks"/>
 
-  <arg name="world_frame" default="world_ned"/>
+  <arg name="world_frame" default="world"/>
 
   <group ns="$(arg namespace)">
     <param name="robot_description"

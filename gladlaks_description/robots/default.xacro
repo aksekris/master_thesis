@@ -2,7 +2,7 @@
 <robot name="gladlaks" xmlns:xacro="http://www.ros.org/wiki/xacro" >
   <xacro:arg name="debug" default="0"/>
   <xacro:arg name="namespace" default="gladlaks"/>
-  <xacro:arg name="inertial_reference_frame" default="world_ned"/>
+  <xacro:arg name="inertial_reference_frame" default="world"/>
   <xacro:arg name="param_file" default="$(find gladlaks_description)/config/gladlaks.yaml"/>
 
   <xacro:property name="param_file" value="$(arg param_file)" />
