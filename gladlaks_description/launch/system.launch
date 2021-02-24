@@ -32,7 +32,6 @@
   <!-- Launch navigation system 
   <include file="$(find gladlaks_navigation)/launch/gladlaks_navigation.launch">
     <arg name="namespace" value="$(arg namespace)/navigation_system"/>
-    <arg name="reset_tam" value="$(arg reset_tam)"/>
   </include> -->
 
   <!-- Launch control system -->

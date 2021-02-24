@@ -120,60 +120,59 @@ Visualization Manager:
       Show Names: true
       Tree:
         world:
-          gladlaks/base_footprint:
-            gladlaks/base_stabilized:
-              gladlaks/base_link:
-                gladlaks/base_link_ned:
-                  {}
-                gladlaks/camera_link:
-                  gladlaks/camera_link_optical:
-                    {}
-                gladlaks/dvl_link:
-                  gladlaks/dvl_sonar0_link:
-                    {}
-                  gladlaks/dvl_sonar1_link:
-                    {}
-                  gladlaks/dvl_sonar2_link:
-                    {}
-                  gladlaks/dvl_sonar3_link:
-                    {}
-                gladlaks/gps_link:
-                  {}
-                gladlaks/imu_link:
-                  {}
-                gladlaks/pose_sensor_link_default:
-                  {}
-                gladlaks/pressure_link:
-                  {}
-                gladlaks/rpt_link:
-                  {}
-                gladlaks/sonar_link:
-                  {}
-                gladlaks/thruster_0:
-                  {}
-                gladlaks/thruster_1:
-                  {}
-                gladlaks/thruster_2:
-                  {}
-                gladlaks/thruster_3:
-                  {}
-                gladlaks/thruster_4:
-                  {}
-                gladlaks/thruster_5:
-                  {}
-                gladlaks/thruster_6:
-                  {}
-                gladlaks/thruster_7:
-                  {}
           world_ned:
-            {}
+            gladlaks/base_footprint:
+              gladlaks/base_stabilized:
+                gladlaks/base_link:
+                  gladlaks/base_link_ned:
+                    {}
+                  gladlaks/camera_link:
+                    gladlaks/camera_link_optical:
+                      {}
+                  gladlaks/dvl_link:
+                    gladlaks/dvl_sonar0_link:
+                      {}
+                    gladlaks/dvl_sonar1_link:
+                      {}
+                    gladlaks/dvl_sonar2_link:
+                      {}
+                    gladlaks/dvl_sonar3_link:
+                      {}
+                  gladlaks/gps_link:
+                    {}
+                  gladlaks/imu_link:
+                    {}
+                  gladlaks/pose_sensor_link_default:
+                    {}
+                  gladlaks/pressure_link:
+                    {}
+                  gladlaks/rpt_link:
+                    {}
+                  gladlaks/sonar_link:
+                    {}
+                  gladlaks/thruster_0:
+                    {}
+                  gladlaks/thruster_1:
+                    {}
+                  gladlaks/thruster_2:
+                    {}
+                  gladlaks/thruster_3:
+                    {}
+                  gladlaks/thruster_4:
+                    {}
+                  gladlaks/thruster_5:
+                    {}
+                  gladlaks/thruster_6:
+                    {}
+                  gladlaks/thruster_7:
+                    {}
       Update Interval: 0
       Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
     Default Light: true
-    Fixed Frame: world
+    Fixed Frame: world_ned
     Frame Rate: 30
   Name: root
   Tools:

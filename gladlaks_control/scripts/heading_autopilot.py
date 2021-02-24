@@ -14,8 +14,8 @@ def talker():
     while not rospy.is_shutdown():
         msg = WrenchStamped()
         msg.header.frame_id = "gladlaks/base_link_ned"
-        msg.wrench.torque.z = 0.5
-        msg.wrench.force.z = 0
+        msg.wrench.torque.z = 0
+        msg.wrench.force.z = 30
         rospy.loginfo(msg)
         pub.publish(msg)
         rate.sleep()
