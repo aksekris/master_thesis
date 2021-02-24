@@ -1,0 +1,4 @@
+<launch>
+  <arg name="namespace" default="gladlaks/control_system" /> 
+  <node name="heading_autopilot" pkg="gladlaks_control" type="heading_autopilot.py" ns="$(arg namespace)" />
+</launch>

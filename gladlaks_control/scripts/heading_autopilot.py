@@ -3,7 +3,7 @@
 
 import rospy
 from geometry_msgs.msg import WrenchStamped
-from pid_controller import PIDRegulator
+# from pid_controller import PIDRegulator
 
 
 def talker():
@@ -13,7 +13,8 @@ def talker():
     rate = rospy.Rate(10) # 10hz
     while not rospy.is_shutdown():
         msg = WrenchStamped()
-        msg.wrench.torque.z = 0
+        msg.header.frame_id = "gladlaks/base_link_ned"
+        msg.wrench.torque.z = 1
         msg.wrench.force.z = 0
         rospy.loginfo(msg)
         pub.publish(msg)
