@@ -25,7 +25,7 @@
     the mesh pose will have to be corrected below in the <visual> block.
     Open the meshes for the RexROV vehicle in Blender to see an example on the mesh placement.
   -->
-  <xacro:property name="visual_mesh_file" value="file://$(find gladlaks_description)/meshes/manta_shell.dae"/>
+  <xacro:property name="visual_mesh_file" value="file://$(find gladlaks_description)/meshes/Gladlaks_centered_body.dae"/>
 
   <!-- Collision geometry mesh, usually in STL format (it is recommended to keep
   this geometry as simple as possible to improve the performance the physics engine
@@ -52,7 +52,7 @@
         <visual>
           <origin xyz="0 0 0" rpy="0 0 0"/>
           <geometry>
-            <mesh filename="${visual_mesh_file}" scale="1 1 1" />
+            <mesh filename="${visual_mesh_file}" scale="0.01 0.01 0.01" />
           </geometry>
         </visual>
 
