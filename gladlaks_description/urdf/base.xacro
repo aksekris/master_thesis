@@ -52,7 +52,7 @@
         <visual>
           <origin xyz="0 0 0" rpy="0 0 0"/>
           <geometry>
-            <mesh filename="${visual_mesh_file}" scale="0.01 0.01 0.01" />
+            <mesh filename="${visual_mesh_file}" scale="0.011 0.011 0.011" />
           </geometry>
         </visual>
 

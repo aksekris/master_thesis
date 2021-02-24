@@ -3,10 +3,10 @@
   <xacro:arg name="debug" default="0"/>
   <xacro:arg name="namespace" default="gladlaks"/>
   <xacro:arg name="inertial_reference_frame" default="world"/>
-  
-  <!-- Download gladlaks parameters -->
-  <xacro:property name="gladlaks_yaml_file" value="$(find gladlaks_description)/config/gladlaks.yaml" />
-  <xacro:property name="props" value="${load_yaml(gladlaks_yaml_file)}"/>
+  <xacro:arg name="param_file" default="$(find gladlaks_description)/config/gladlaks.yaml"/>
+
+  <xacro:property name="param_file" value="$(arg param_file)" />
+  <xacro:property name="props" value="${load_yaml(param_file)}"/>
 
   <!-- Include the ROV macro file -->
   <xacro:include filename="$(find gladlaks_description)/urdf/base.xacro"/>

@@ -1,12 +1,37 @@
 <launch>
 
-  <!-- Upload World -->
+
+  <!-- Parameters of gladlaks, both lines below are needed-->
+  <rosparam file="$(find gladlaks_description)/config/gladlaks.yaml" command="load"/>
+  <arg name="param_file" default="$(find gladlaks_description)/config/gladlaks.yaml"/>
+ 
+  
+  <!-- 
+   If you ever change the thruster configuration, set reste_tam=true for the first run. 
+   This argument updates the truster configuration input matrix to 
+   be used in the control allocation node.
+   -->
+  <arg name="reset_tam" default="false"/>
+
+  
+
+  <!-- Create World -->
   <include file="$(find uuv_gazebo_worlds)/launch/lake.launch"/>
 
-  <!-- Upload Gladlaks -->
-  <include file="$(find gladlaks_description)/launch/upload.launch"/>
+  <!-- Spawn Gladlaks -->
+  <include file="$(find gladlaks_description)/launch/upload.launch">
+    <arg name="x"     value="0"/>
+    <arg name="y"     value="0"/>
+    <arg name="z"     value="0"/>
+    <arg name="roll"  value="0"/>
+    <arg name="pitch" value="0"/>
+    <arg name="yaw"   value="0"/>
+    <arg name="param_file" value="$(arg param_file)"/>
+  </include>
 
   <!-- Start the thruster manager -->
-  <include file="$(find gladlaks_control)/launch/start_thruster_manager.launch"/>
+  <include file="$(find gladlaks_control)/launch/start_thruster_manager.launch">
+    <arg name="reset_tam" value="$(arg reset_tam)"/>
+  </include>
 
 </launch>
