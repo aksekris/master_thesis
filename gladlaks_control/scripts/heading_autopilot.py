@@ -6,7 +6,7 @@ from geometry_msgs.msg import WrenchStamped
 # from pid_controller import PIDRegulator
 
 
-def talker():
+def publisher():
     pub = rospy.Publisher('/gladlaks/thruster_manager/input_stamped', WrenchStamped, queue_size=1)
     rospy.init_node('heading_autopilot', anonymous=True)
     #rospy.Subscriber("chatter", String, callback)
@@ -14,8 +14,8 @@ def talker():
     while not rospy.is_shutdown():
         msg = WrenchStamped()
         msg.header.frame_id = "gladlaks/base_link_ned"
-        msg.wrench.torque.z = 0
-        msg.wrench.force.z = 30
+        msg.wrench.torque.z = 0.5
+        msg.wrench.force.z = 0
         rospy.loginfo(msg)
         pub.publish(msg)
         rate.sleep()
@@ -26,6 +26,6 @@ def callback(data):
 
 if __name__ == '__main__':
     try:
-        talker()
+        publisher()
     except rospy.ROSInterruptException:
         pass
