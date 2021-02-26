@@ -21,9 +21,13 @@ physical:
 
 
 control_system:
-  heading_autopilot:
-    control_bandwidth: 0.6
-    relative_damping_ratio: 0.9
+  heading_controller:
+    control_bandwidth: 0.6  # 1/(/thruster/first_order_time_constant*8) ish
+    relative_damping_ratio: 0.9 # Fast ass autopilot
+    torque_saturation_limit: 44
+  depth_controller:
+    control_bandwidth: 0.6  # 1/(/thruster/first_order_time_constant*8) ish
+    relative_damping_ratio: 0.9 # Fast ass autopilot
     torque_saturation_limit: 44
   controller_frequency: 10
 
@@ -57,9 +61,9 @@ thrusters:
 # auv_dynamics: Used in the simulator and motion control system
 auv_dynamics:
   M_RB: 
-    [[ TODO, TODO, TODO, TODO, TODO, TODO], 
-     [ TODO, TODO, TODO, TODO, TODO, TODO], 
-     [ TODO, TODO, TODO, TODO, TODO, TODO], 
+    [[ 30.9, TODO, TODO, TODO, TODO, TODO], 
+     [ TODO, 30.9, TODO, TODO, TODO, TODO], 
+     [ TODO, TODO, 30.9, TODO, TODO, TODO], 
      [ TODO, TODO, TODO, TODO, TODO, TODO], 
      [ TODO, TODO, TODO, TODO, TODO, TODO], 
      [ TODO, TODO, TODO, TODO, TODO, 0.919819]]
@@ -70,7 +74,7 @@ auv_dynamics:
      [ 0, 0, 0, 1.0092, 0, 0], 
      [ 0, 0, 0, 0, 1.0092, 0], 
      [ 0, 0, 0, 0, 0, 0]]
-  D: [-19.5909, -19.5909, -50.5595, -13.3040, -13.3040, -1.1559]    # Linear damping
+  D: [-9.5909, -9.5909, -50.5595, -13.3040, -13.3040, -1.1559]    # Linear damping
   D_n: [-5.1386, -5.1386, -26.1105, 0, 0, 0]                        # Quadratic damping
  
 

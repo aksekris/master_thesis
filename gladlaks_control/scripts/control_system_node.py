@@ -5,9 +5,10 @@ import rospy
 import threading
 from geometry_msgs.msg import PoseStamped, TwistStamped, WrenchStamped
 from tf.transformations import euler_from_quaternion
+from autopilots import HeadingAutopilot
 from pid_controller import PIDController
 from pid_pole_placement_algorithm import pid_pole_placement_algorithm
-from heading_autopilot import HeadingAutopilot
+
 
 class ControlSystem:
     def __init__(self):
@@ -19,19 +20,34 @@ class ControlSystem:
         self.controller_frequency = rospy.get_param("/control_system/controller_frequency")
         self.get_eta = False
         self.eta = [None, None, None, None, None, None]
+        self.eta_d = [0, 0, 1, 0, 0, 1] # Placeholder
         self.get_nu = False
         self.nu = [None, None, None, None, None, None]
+        self.nu_d = [0, 0, 0, 0, 0, 0] # Placeholder
 
         M_RB = rospy.get_param("/auv_dynamics/M_RB")
         M_A = rospy.get_param("/auv_dynamics/M_A")
+
+        # Initialize the heading controller
         m = M_RB[5][5]+M_A[5][5]
         d = -rospy.get_param("/auv_dynamics/D")[5]
         k = 0
-        omega_b = rospy.get_param("/control_system/heading_autopilot/control_bandwidth")
-        zeta = rospy.get_param("/control_system/heading_autopilot/relative_damping_ratio")
-        tau_sat = rospy.get_param("/control_system/heading_autopilot/torque_saturation_limit")
-        self.heading_autopilot = HeadingAutopilot(m, d, k, omega_b, zeta, tau_sat)
-
+        omega_b = rospy.get_param("/control_system/heading_controller/control_bandwidth")
+        zeta = rospy.get_param("/control_system/heading_controller/relative_damping_ratio")
+        tau_sat = rospy.get_param("/control_system/heading_controller/torque_saturation_limit")
+        (K_p, K_d, K_i) = pid_pole_placement_algorithm(m, d, k, omega_b, zeta)
+        self.heading_controller = HeadingAutopilot(K_p, K_d, K_i, tau_sat)
+        
+        # Initialize the depth controller
+        m = M_RB[2][2]+M_A[2][2]
+        d = -rospy.get_param("/auv_dynamics/D")[2]
+        k = 0  
+        omega_b = rospy.get_param("/control_system/depth_controller/control_bandwidth")
+        zeta = rospy.get_param("/control_system/depth_controller/relative_damping_ratio")
+        tau_sat = rospy.get_param("/control_system/depth_controller/torque_saturation_limit")
+        (K_p, K_d, K_i) = pid_pole_placement_algorithm(m, d, k, omega_b, zeta)
+        self.depth_controller = PIDController(K_p, K_d, K_i, tau_sat)
+        print((K_p, K_d, K_i))
 
     def pose_callback(self, pose_msg):
         if self.get_eta:
@@ -52,24 +68,45 @@ class ControlSystem:
         else:
             pass
     
+    def desired_pose_callback(self):
+        self.eta_d = [0, 0, 0, 0, 0, 0]
+
+    def desired_twist_callback(self):
+        self.nu_d = [0, 0, 0, 0, 0, 0]
+
     def get_state_estimates(self):
         self.get_eta = True
         self.get_nu = True
         while self.get_eta or self.get_nu:
             continue
 
+    def calculate_control_forces(self):
+        tau_1 = 0
+        tau_2 = 0
+        tau_3 = 23 + self.depth_controller.regulate((self.eta[2] - self.eta_d[2]), self.nu[2], rospy.get_time())                
+        tau_4 = 0
+        tau_5 = 0
+        tau_6 = 0 #self.heading_controller.calculate_control_torque((self.eta[5] - self.eta_d[5]), self.nu[5], rospy.get_time())
+        print('Error')
+        print((self.eta[2] - self.eta_d[2]))
+        print('tau_3:')
+        print(tau_3)
+        return [tau_1, tau_2, tau_3, tau_4, tau_5, tau_6]
 
     def publish_control_forces(self):
         rate = rospy.Rate(self.controller_frequency)
         while not rospy.is_shutdown():
             try:
                 self.get_state_estimates()
+                tau = self.calculate_control_forces()
                 msg = WrenchStamped()
                 msg.header.stamp = rospy.get_rostime()
                 msg.header.frame_id = "gladlaks/base_link_ned"
-                msg.wrench.torque.z = self.heading_autopilot.calculate_control_torque(self.eta[5], 3.14, self.nu[5], rospy.get_time())
-                self.pub.publish(msg)
+                msg.wrench.force.z = tau[2]
+                msg.wrench.torque.z = tau[5]
                 rate.sleep()
+                self.pub.publish(msg)
+                
             except rospy.ROSInterruptException:
                 pass
         
