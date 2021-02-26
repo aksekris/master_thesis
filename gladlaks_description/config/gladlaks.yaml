@@ -24,7 +24,8 @@ control_system:
   heading_autopilot:
     control_bandwidth: 0.6
     relative_damping_ratio: 1.1
-    controller_frequency: 20
+  controller_frequency: 10
+
 
 thrusters:
   num: 8
