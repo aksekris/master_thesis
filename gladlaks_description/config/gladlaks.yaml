@@ -23,7 +23,8 @@ physical:
 control_system:
   heading_autopilot:
     control_bandwidth: 0.6
-    relative_damping_ratio: 1.1
+    relative_damping_ratio: 0.9
+    torque_saturation_limit: 44
   controller_frequency: 10
 
 

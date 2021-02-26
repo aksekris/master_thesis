@@ -2,9 +2,12 @@
 # Written by Aksel Kristoffersen
 
 import rospy
+import threading
 from geometry_msgs.msg import PoseStamped, TwistStamped, WrenchStamped
 from tf.transformations import euler_from_quaternion
-import threading
+from pid_controller import PIDController
+from pid_pole_placement_algorithm import pid_pole_placement_algorithm
+from heading_autopilot import HeadingAutopilot
 
 class ControlSystem:
     def __init__(self):
@@ -19,13 +22,23 @@ class ControlSystem:
         self.get_nu = False
         self.nu = [None, None, None, None, None, None]
 
+        M_RB = rospy.get_param("/auv_dynamics/M_RB")
+        M_A = rospy.get_param("/auv_dynamics/M_A")
+        m = M_RB[5][5]+M_A[5][5]
+        d = -rospy.get_param("/auv_dynamics/D")[5]
+        k = 0
+        omega_b = rospy.get_param("/control_system/heading_autopilot/control_bandwidth")
+        zeta = rospy.get_param("/control_system/heading_autopilot/relative_damping_ratio")
+        tau_sat = rospy.get_param("/control_system/heading_autopilot/torque_saturation_limit")
+        self.heading_autopilot = HeadingAutopilot(m, d, k, omega_b, zeta, tau_sat)
+
+
     def pose_callback(self, pose_msg):
         if self.get_eta:
             quaternions = pose_msg.pose.orientation
             euler_angles = euler_from_quaternion([quaternions.x, quaternions.y, quaternions.z, quaternions.w])
             position = (pose_msg.pose.position.x, pose_msg.pose.position.y, pose_msg.pose.position.z)
             self.eta = [position[0], position[1], position[2], euler_angles[0], euler_angles[1], euler_angles[2]]
-            print(self.eta)
             self.get_eta = False
         else:
             pass
@@ -34,6 +47,7 @@ class ControlSystem:
         if self.get_nu:
             linear = (twist_msg.twist.linear.x, twist_msg.twist.linear.y, twist_msg.twist.linear.z)
             angular = (twist_msg.twist.angular.x, twist_msg.twist.angular.y, twist_msg.twist.angular.z)
+            self.nu = [linear[0], linear[1], linear[2], angular[0], angular[1], angular[2]]
             self.get_nu = False
         else:
             pass
@@ -41,24 +55,21 @@ class ControlSystem:
     def get_state_estimates(self):
         self.get_eta = True
         self.get_nu = True
-        while  self.get_eta or self.get_nu:
+        while self.get_eta or self.get_nu:
             continue
 
-    def heading_autopilot(self):
-        quaternions = self.pose.orientation
-        euler_angles = euler_from_quaternion([quaternions.x, quaternions.y, quaternions.z, quaternions.w])
-        return 0.5
 
     def publish_control_forces(self):
         rate = rospy.Rate(self.controller_frequency)
         while not rospy.is_shutdown():
             try:
                 self.get_state_estimates()
-                #msg = WrenchStamped()
-                #msg.wrench.torque.z = self.heading_autopilot()
+                msg = WrenchStamped()
+                msg.header.stamp = rospy.get_rostime()
+                msg.header.frame_id = "gladlaks/base_link_ned"
+                msg.wrench.torque.z = self.heading_autopilot.calculate_control_torque(self.eta[5], 3.14, self.nu[5], rospy.get_time())
+                self.pub.publish(msg)
                 rate.sleep()
-                #self.pub.publish(msg)
-                
             except rospy.ROSInterruptException:
                 pass
         

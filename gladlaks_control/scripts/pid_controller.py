@@ -47,5 +47,8 @@ class PIDController:
 			# Anti-wind-up
 			u = np.sign(u_unsat) * self.u_sat
 			self.integral += - (dt/self.K_i) * (u - u_unsat)
+		else:
+			u = u_unsat
+
 		return u
 
