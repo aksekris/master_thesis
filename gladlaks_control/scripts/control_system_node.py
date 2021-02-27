@@ -19,7 +19,7 @@ class ControlSystem:
         self.controller_frequency = rospy.get_param("/control_system/controller_frequency")
         self.get_eta = False
         self.eta = [None, None, None, None, None, None]
-        self.eta_d = [0, 0, 1, 0, 0, 1] # Placeholder
+        self.eta_d = [0, 0, 1, 0, 0, 0] # Placeholder
         self.get_nu = False
         self.nu = [None, None, None, None, None, None]
         self.nu_d = [None, None, None, None, None, None] # Placeholder
@@ -35,7 +35,7 @@ class ControlSystem:
         zeta = rospy.get_param("/control_system/heading_controller/relative_damping_ratio")
         tau_sat = rospy.get_param("/control_system/heading_controller/torque_saturation_limit")
         (K_p, K_d, K_i) = pid_pole_placement_algorithm(m, d, k, omega_b, zeta)
-        self.heading_controller = HeadingAutopilot(K_p, K_d, K_i, tau_sat)
+        self.heading_controller = HeadingAutopilot(K_p, K_d, K_i, tau_sat, rospy.get_time())
         
         # Initialize the depth controller
         m = M_RB[2][2]+M_A[2][2]
@@ -45,7 +45,7 @@ class ControlSystem:
         zeta = rospy.get_param("/control_system/depth_controller/relative_damping_ratio")
         tau_sat = rospy.get_param("/control_system/depth_controller/torque_saturation_limit")
         (K_p, K_d, K_i) = pid_pole_placement_algorithm(m, d, k, omega_b, zeta)
-        self.depth_controller = PIDController(K_p, K_d, K_i, tau_sat)
+        self.depth_controller = PIDController(K_p, K_d, K_i, tau_sat, rospy.get_time())
 
     def pose_callback(self, pose_msg):
         if self.get_eta:
@@ -81,7 +81,7 @@ class ControlSystem:
     def calculate_control_forces(self):
         tau_1 = 0
         tau_2 = 0
-        tau_3 = 0#23 + self.depth_controller.regulate((self.eta[2] - self.eta_d[2]), self.nu[2], rospy.get_time())                
+        tau_3 = self.depth_controller.regulate((self.eta[2] - self.eta_d[2]), self.nu[2], rospy.get_time(), u_ff=23)                
         tau_4 = 0
         tau_5 = 0
         tau_6 = self.heading_controller.calculate_control_torque((self.eta[5] - self.eta_d[5]), self.nu[5], rospy.get_time())
