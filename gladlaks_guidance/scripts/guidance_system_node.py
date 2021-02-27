@@ -7,13 +7,18 @@ from geometry_msgs.msg import PoseStamped, TwistStamped
 class GuidanceSystem:
     def __init__(self):
         rospy.init_node('guidance_system')
-        rospy.Rate(20)
         self.pub_pose = rospy.Publisher('/gladlaks/control_system/input_pose', PoseStamped, queue_size=1)
         self.pub_twist = rospy.Publisher('/gladlaks/control_system/input_twist', TwistStamped, queue_size=1)
 
+    def 
+
+
     def generate_trajectory(self)
         
+
+        
     def publish_trajectory(self)
+        rospy.Rate(20)
         while not rospy.is_shutdown():
             try:
                 = generate_trajectory()

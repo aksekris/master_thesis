@@ -15,6 +15,7 @@ class ControlSystem:
         rospy.init_node('control_system')
         pose_sub = rospy.Subscriber('/gladlaks/navigation_system/pose', PoseStamped, self.pose_callback)
         twist_sub = rospy.Subscriber('/gladlaks/navigation_system/twist', TwistStamped, self.twist_callback)
+        input_pose_sub = rospy.Subscriber('/gladlaks/control_system/input_pose', PoseStamped, self.input_pose_callback)
         self.pub = rospy.Publisher('/gladlaks/thruster_manager/input_stamped', WrenchStamped, queue_size=1)
         self.controller_frequency = rospy.get_param("/control_system/controller_frequency")
         self.get_eta = False
@@ -66,6 +67,12 @@ class ControlSystem:
         else:
             pass
     
+    def input_pose_callback(self, input_pose_msg):
+        quaternions = input_pose_msg.pose.orientation
+        euler_angles = euler_from_quaternion([quaternions.x, quaternions.y, quaternions.z, quaternions.w])
+        position = (pose_msg.pose.position.x, pose_msg.pose.position.y, pose_msg.pose.position.z)
+        self.eta_d[5] = euler_angles[2]
+
     def desired_pose_callback(self):
         self.eta_d = [0, 0, 0, 0, 0, 0]
 
@@ -81,7 +88,7 @@ class ControlSystem:
     def calculate_control_forces(self):
         tau_1 = 0
         tau_2 = 0
-        tau_3 = self.depth_controller.regulate((self.eta[2] - self.eta_d[2]), self.nu[2], rospy.get_time(), u_ff=23)                
+        tau_3 = 0 #self.depth_controller.regulate((self.eta[2] - self.eta_d[2]), self.nu[2], rospy.get_time(), u_ff=23)                
         tau_4 = 0
         tau_5 = 0
         tau_6 = self.heading_controller.calculate_control_torque((self.eta[5] - self.eta_d[5]), self.nu[5], rospy.get_time())
