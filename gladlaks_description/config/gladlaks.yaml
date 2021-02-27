@@ -3,8 +3,9 @@
 # When looking at the AUV from above, the thruster placement is:   
 
 # trusters: Used to set parameters in the simulator
-initial_states:
-  eta: [0, 0, 0, 0, 0, 0]  # Initial pose
+initial_conditions:
+  auv:
+    eta: [0, 0, 0, 0, 0, 0]  # Initial pose  NB! This do not correspond with simulator!
 
 physical:
   mass_kg: 30.9
@@ -29,7 +30,7 @@ control_system:
     control_bandwidth: 0.6  # 1/(/thruster/first_order_time_constant*8) ish
     relative_damping_ratio: 0.9 # Fast ass autopilot
     torque_saturation_limit: 44
-  controller_frequency: 10
+  controller_frequency: 20
 
 
 thrusters:

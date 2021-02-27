@@ -12,7 +12,10 @@ from pid_pole_placement_algorithm import pid_pole_placement_algorithm
 
 class ControlSystem:
     def __init__(self):
+
         rospy.init_node('control_system')
+        while rospy.get_time() == 0:
+            continue
         pose_sub = rospy.Subscriber('/gladlaks/navigation_system/pose', PoseStamped, self.pose_callback)
         twist_sub = rospy.Subscriber('/gladlaks/navigation_system/twist', TwistStamped, self.twist_callback)
         input_pose_sub = rospy.Subscriber('/gladlaks/control_system/input_pose', PoseStamped, self.input_pose_callback)

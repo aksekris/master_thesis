@@ -35,44 +35,48 @@ class MassDamperSpringSystem(object):
 
         delta_bf = np.diag(delta)
         omega_bf = np.diag(omega)
-        n = len(delta)
+        n = len(omega)
         self.A_d = np.block([[np.zeros((n, n)), np.eye(n)], [-omega_bf**2, -2*delta_bf*omega_bf]])
         self.B_d = np.block([[np.zeros((n, n))], [omega_bf**2]])
         self.prev_t = t
         self.x_bf = np.concatenate((x, x_dot), axis=0)
 
     def simulate(self, r, t):
-        """Function for simulating one timestep of the system
+        """Function for simulating one timestep of the system using Euler integration
 
         Args:
             r (list):       Input signal
         
         Returns:
-            x (list):       Output signal
-            x_dot (list):   Output signal derivative
+            x (list):       The states
+            x_dot (list):   The state derivatives
 
         """
+
+        # Simulate system
         x_bf_dot = np.dot(self.A_d, self.x_bf) + np.dot(self.B_d, r)
 
 
         if hasattr(self, 'x_dot_max'):
-            # Saturation limits for velocities
+            # Saturation for velocities
             bool_list = np.abs(x_bf_dot[0:(len(x_bf_dot)/2)]) > self.x_dot_max
             for index in [i for i, x in enumerate(bool_list) if x]:
                 x_bf_dot[index] = np.sign(x_bf_dot[index]) *self.x_dot_max[index]
         
         if hasattr(self, 'x_ddot_max'):
-            # Saturation limits for accelerations
+            # Saturation for accelerations
             bool_list = np.abs(x_bf_dot[(len(x_bf_dot)/2):]) > self.x_ddot_max
             for index in [i for i, x in enumerate(bool_list) if x]:
                 x_bf_dot[(len(x_bf_dot)/2)+index] = np.sign(x_bf_dot[(len(x_bf_dot)/2)+index]) *self.x_ddot_max[index]
             
-
+        print(self.prev_t)
+        # Euler integration
         dt = t - self.prev_t
         self.x_bf = self.x_bf + dt*x_bf_dot
+        self.prev_t = t
 
         if hasattr(self, 'x_dot_max'):
-            # Another saturation limits for velocities
+            # Another saturation for velocities
             bool_list = np.abs(self.x_bf[(len(self.x_bf)/2):]) > self.x_dot_max
             for index in [i for i, x in enumerate(bool_list) if x]:
                 self.x_bf[(len(self.x_bf)/2)+index] = np.sign(self.x_bf[(len(self.x_bf)/2)+index]) *self.x_dot_max[index]
@@ -90,40 +94,56 @@ class LowPassFilter(object):
 
         Args:
             x (list):           The inital states
-            omega (list):       The relative damping ratios
-            t (float):
+            omega (list):       The natural frequencies
+            t (float):          The current time
 
-        Other Parameters:
-            x_dot_max (list):   The velocity limit
-            x_ddot_max (list):  The acceleration limt
+        """
+        n = len(omega)
+        self.x = x
+        self.omega_bf = np.diag(omega)
+        self.prev_t = t
+
+    def simulate(self, r, t):
+        """Function for simulating one timestep of the low-pass filter using euler integration
+
+        Args:
+            r (list):       Input signal
+        
+        Returns:
+            x (list):       Output signal
 
         """
 
+        #print(self.prev_t)
 
+        x_dot = np.dot(self.omega_bf, (np.array(r) - np.array(self.x)))
+        dt = t - self.prev_t
+        self.x = self.x + dt*x_dot
+        self.prev_t = t
+        x = self.x.tolist()
 
+        return x
+        
 
 if __name__ == '__main__':
-    x = [0, 0, 0]
-    x_dot = [0, 0, 0]
-    delta = [1, 1, 0.8] 
-    omega = [0.5, 0.5, 0.5]
-    system = MassDamperSpringSystem(x, x_dot, delta, omega, 0)
 
+
+    eta = [0]
+    nu = [0]
+    delta = [1] 
+    omega = [5]
+    low_pass_filter = LowPassFilter(eta, omega, 0)
+    mass_damper_spring_system = MassDamperSpringSystem(eta, nu, delta, omega, 0)
+    
     plot1 = []
-    plot2 = []
-    plot3 = []
+    for t in np.linspace(0, 10.0, num=200):
+        eta = low_pass_filter.simulate(1, t)
+        eta, nu = mass_damper_spring_system.simulate(eta, t)
+        plot1.append(eta[0])
 
-    for t in np.linspace(0, 2.0, num=100):
-        x, x_dot = system.simulate([1, 1, 1], t)
-        print('x:')
-        print(x)
-        print('x_dt:')
-        print(x_dot)
-        plot1.append(x[0])
-        plot2.append(x[1])
-        plot3.append(x[2])
 
-    plt.plot(plot3)
+    plt.plot(plot1)
     plt.ylabel('Position')
     plt.show()
     plt.close('all')
+    
