@@ -13,9 +13,8 @@ from pid_pole_placement_algorithm import pid_pole_placement_algorithm
 class ControlSystem:
     def __init__(self):
         rospy.init_node('control_system')
-        rospy.Rate(10)
-        self.pose_sub = rospy.Subscriber('/gladlaks/navigation_system/pose', PoseStamped, self.pose_callback)
-        self.twist_sub = rospy.Subscriber('/gladlaks/navigation_system/twist', TwistStamped, self.twist_callback)
+        pose_sub = rospy.Subscriber('/gladlaks/navigation_system/pose', PoseStamped, self.pose_callback)
+        twist_sub = rospy.Subscriber('/gladlaks/navigation_system/twist', TwistStamped, self.twist_callback)
         self.pub = rospy.Publisher('/gladlaks/thruster_manager/input_stamped', WrenchStamped, queue_size=1)
         self.controller_frequency = rospy.get_param("/control_system/controller_frequency")
         self.get_eta = False
@@ -23,7 +22,7 @@ class ControlSystem:
         self.eta_d = [0, 0, 1, 0, 0, 1] # Placeholder
         self.get_nu = False
         self.nu = [None, None, None, None, None, None]
-        self.nu_d = [0, 0, 0, 0, 0, 0] # Placeholder
+        self.nu_d = [None, None, None, None, None, None] # Placeholder
 
         M_RB = rospy.get_param("/auv_dynamics/M_RB")
         M_A = rospy.get_param("/auv_dynamics/M_A")
@@ -47,7 +46,6 @@ class ControlSystem:
         tau_sat = rospy.get_param("/control_system/depth_controller/torque_saturation_limit")
         (K_p, K_d, K_i) = pid_pole_placement_algorithm(m, d, k, omega_b, zeta)
         self.depth_controller = PIDController(K_p, K_d, K_i, tau_sat)
-        print((K_p, K_d, K_i))
 
     def pose_callback(self, pose_msg):
         if self.get_eta:
@@ -83,14 +81,10 @@ class ControlSystem:
     def calculate_control_forces(self):
         tau_1 = 0
         tau_2 = 0
-        tau_3 = 23 + self.depth_controller.regulate((self.eta[2] - self.eta_d[2]), self.nu[2], rospy.get_time())                
+        tau_3 = 0#23 + self.depth_controller.regulate((self.eta[2] - self.eta_d[2]), self.nu[2], rospy.get_time())                
         tau_4 = 0
         tau_5 = 0
-        tau_6 = 0 #self.heading_controller.calculate_control_torque((self.eta[5] - self.eta_d[5]), self.nu[5], rospy.get_time())
-        print('Error')
-        print((self.eta[2] - self.eta_d[2]))
-        print('tau_3:')
-        print(tau_3)
+        tau_6 = self.heading_controller.calculate_control_torque((self.eta[5] - self.eta_d[5]), self.nu[5], rospy.get_time())
         return [tau_1, tau_2, tau_3, tau_4, tau_5, tau_6]
 
     def publish_control_forces(self):
@@ -106,7 +100,6 @@ class ControlSystem:
                 msg.wrench.torque.z = tau[5]
                 rate.sleep()
                 self.pub.publish(msg)
-                
             except rospy.ROSInterruptException:
                 pass
         

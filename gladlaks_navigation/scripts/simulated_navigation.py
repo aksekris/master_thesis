@@ -44,7 +44,7 @@ if __name__ == '__main__':
             
             msg_twist = TwistStamped()
             msg_twist.header.stamp = rospy.get_rostime()
-            msg_twist.header.frame_id = '/gladlaks/baqwse_link_ned'
+            msg_twist.header.frame_id = '/gladlaks/base_link_ned'
             msg_twist.twist.linear.x = lin[0]
             msg_twist.twist.linear.y = lin[1]
             msg_twist.twist.linear.z = lin[2]

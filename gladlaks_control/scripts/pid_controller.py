@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-# Written by Kristoffer Rakstad Solberg
-# Contributed by Aksel Kristoffersen
+# Written by Aksel Kristoffersen
 
 import numpy as np
 
@@ -38,8 +37,6 @@ class PIDController(object):
 		dt = t - self.prev_t
 		if self.prev_t > 0.0 and dt > 0.0:
 			self.integral += x_err*dt
-
-		print(-self.K_p*x_err, -self.K_d*x_dt, -self.K_i*self.integral)
 
 		u_unsat = -(self.K_p*x_err + self.K_d*x_dt + self.K_i*self.integral)
 		self.prev_x_err = x_err
