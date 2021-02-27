@@ -20,7 +20,7 @@ class ControlSystem:
         self.controller_frequency = rospy.get_param("/control_system/controller_frequency")
         self.get_eta = False
         self.eta = [None, None, None, None, None, None]
-        self.eta_d = [0, 0, 1, 0, 0, 0] # Placeholder
+        self.eta_d = [0, 0, 0.5, 0, 0, 0] # Placeholder
         self.get_nu = False
         self.nu = [None, None, None, None, None, None]
         self.nu_d = [None, None, None, None, None, None] # Placeholder
@@ -70,7 +70,7 @@ class ControlSystem:
     def input_pose_callback(self, input_pose_msg):
         quaternions = input_pose_msg.pose.orientation
         euler_angles = euler_from_quaternion([quaternions.x, quaternions.y, quaternions.z, quaternions.w])
-        position = (pose_msg.pose.position.x, pose_msg.pose.position.y, pose_msg.pose.position.z)
+        position = (input_pose_msg.pose.position.x, input_pose_msg.pose.position.y, input_pose_msg.pose.position.z)
         self.eta_d[5] = euler_angles[2]
 
     def desired_pose_callback(self):
@@ -88,7 +88,7 @@ class ControlSystem:
     def calculate_control_forces(self):
         tau_1 = 0
         tau_2 = 0
-        tau_3 = 0 #self.depth_controller.regulate((self.eta[2] - self.eta_d[2]), self.nu[2], rospy.get_time(), u_ff=23)                
+        tau_3 = self.depth_controller.regulate((self.eta[2] - self.eta_d[2]), self.nu[2], rospy.get_time(), u_ff=23)                
         tau_4 = 0
         tau_5 = 0
         tau_6 = self.heading_controller.calculate_control_torque((self.eta[5] - self.eta_d[5]), self.nu[5], rospy.get_time())
