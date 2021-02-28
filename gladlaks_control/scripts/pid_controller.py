@@ -6,7 +6,7 @@ import numpy as np
 class PIDController(object):
 	"""1D PID controller using the state derivative, Euler integration, anit-windup
 	and with the possibility of adding a feed-forward input"""
-	def __init__(self, K_p, K_d, K_i, u_max, t):
+	def __init__(self, K_p, K_d, K_i, u_max):
 		"""Initialize the PID controller
 
 		Args:
@@ -20,9 +20,11 @@ class PIDController(object):
 		self.K_i = K_i
 		self.K_d = K_d
 		self.u_max = u_max
-		self.integral = 0
-		self.prev_x_err = 0
+
+	def initialize(self, t):
 		self.prev_t = t
+		self.integral = 0
+
 
 	def regulate(self, x_err, x_dt, t, u_ff=0):
 		"""Calculate the controller output
@@ -43,7 +45,6 @@ class PIDController(object):
 			self.integral += x_err*dt
 
 		u_unsat = u_ff - (self.K_p*x_err + self.K_d*x_dt + self.K_i*self.integral)
-		self.prev_x_err = x_err
 		self.prev_t = t
 
 		if abs(u_unsat) > self.u_max:

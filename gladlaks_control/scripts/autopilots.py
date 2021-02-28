@@ -7,8 +7,8 @@ from pid_controller import PIDController
 class HeadingAutopilot(PIDController):
     """Heading autopilot using a PID controller"""
 
-    def __init__(self, K_p, K_d, K_i, tau_sat, t):
-        super(HeadingAutopilot, self).__init__(K_p, K_d, K_i, tau_sat, t)
+    def __init__(self, K_p, K_d, K_i, tau_sat):
+        super(HeadingAutopilot, self).__init__(K_p, K_d, K_i, tau_sat)
 
     def calculate_control_torque(self, yaw_err, yaw_dt, t, yaw_ff=0):
         """Calculate the control torque for heading control using a PID controller

@@ -46,23 +46,23 @@ class GuidanceSystem:
         z_r = 1
         roll_r = 0
         pitch_r = 0
-        yaw_r = 0
+        yaw_r = 3.14/2
         eta_r = [x_r, y_r, z_r, roll_r, pitch_r, yaw_r]
-        nu_r = [None, None, None, None, None, None]
+        nu_r = [0, 0, 0, 0, 0, 0]
         return eta_r, nu_r
 
     def generate_trajectory(self):
         eta_r, nu_r = self.generate_setpoint()
         eta_r = self.low_pass_filter.simulate(eta_r, rospy.get_time())
-        eta_d, nu_d = self.mass_damper_spring_system.simulate(eta_r, rospy.get_time())
-        return eta_d, nu_d
+        eta_d, eta_dot_d, eta_ddot_d = self.mass_damper_spring_system.simulate(eta_r, rospy.get_time())
+        return eta_d, eta_dot_d, eta_ddot_d
         
     def publish_trajectory(self):
         rate = rospy.Rate(self.controller_frequency)
         while not rospy.is_shutdown():
             try:
                 self.get_state_estimates()
-                eta_d, nu_d = self.generate_trajectory()
+                eta_d, nu_d = self.generate_setpoint()
                 trans = eta_d[0:3]
                 rot = quaternion_from_euler(eta_d[3], eta_d[4], eta_d[5])
                 lin = nu_d[0:3]
@@ -70,6 +70,7 @@ class GuidanceSystem:
                 msg = Odometry()
 
                 msg.header.stamp = rospy.get_rostime()
+                msg.child_frame_id = 'dp_control'
                 msg.pose.pose.position.x = trans[0]
                 msg.pose.pose.position.y = trans[1]
                 msg.pose.pose.position.z = trans[2]
