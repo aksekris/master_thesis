@@ -18,18 +18,12 @@ class GuidanceSystem:
         self.pub_twist = rospy.Publisher('/gladlaks/control_system/input_twist', TwistStamped, queue_size=1)
         self.controller_frequency = rospy.get_param("/control_system/controller_frequency")
         
-
         # Initialize the reference model
         eta = rospy.get_param("/initial_conditions/auv/eta")
         nu = [0, 0, 0, 0, 0, 0]
         delta = [1, 1, 1, 1, 1, 1]
-        omega = [4, 4, 4, 4, 4, 4]
-
-        eta = [eta[5]]
-        nu = [nu[5]]
-        omega = [omega[5]]
-        delta = [delta[5]]
-        # vel_limits =
+        omega = [2, 2, 4, 4, 4, 4] # todo, natural frequencies?
+        # vel_limits = 
         # acc_limits = 
         self.low_pass_filter = LowPassFilter(eta, omega, rospy.get_time())
         self.mass_damper_spring_system = MassDamperSpringSystem(eta, nu, delta, omega, rospy.get_time())
@@ -60,23 +54,21 @@ class GuidanceSystem:
             continue
 
     def generate_setpoint(self):
-        x_r = 0
-        y_r = 0
-        z_r = 0
+        x_r = -1
+        y_r = -1
+        z_r = 1
         roll_r = 0
         pitch_r = 0
-        yaw_r = 2
+        yaw_r = 3.14/3
         eta_r = [x_r, y_r, z_r, roll_r, pitch_r, yaw_r]
         nu_r = [None, None, None, None, None, None]
         return eta_r, nu_r
 
     def generate_trajectory(self):
         eta_r, nu_r = self.generate_setpoint()
-        x = self.low_pass_filter.simulate([eta_r[5]], rospy.get_time())
-        eta_d, nu_d = self.mass_damper_spring_system.simulate(x, rospy.get_time())
-        eta_r[5] = eta_d[0]
-        nu_r[5] = nu_d[0]
-        return eta_r, nu_r
+        eta_r = self.low_pass_filter.simulate(eta_r, rospy.get_time())
+        eta_d, nu_d = self.mass_damper_spring_system.simulate(eta_r, rospy.get_time())
+        return eta_d, nu_d
         
     def publish_trajectory(self):
         rate = rospy.Rate(self.controller_frequency)

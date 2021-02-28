@@ -69,7 +69,7 @@ class MassDamperSpringSystem(object):
             for index in [i for i, x in enumerate(bool_list) if x]:
                 x_bf_dot[(len(x_bf_dot)/2)+index] = np.sign(x_bf_dot[(len(x_bf_dot)/2)+index]) *self.x_ddot_max[index]
             
-        print(self.prev_t)
+        
         # Euler integration
         dt = t - self.prev_t
         self.x_bf = self.x_bf + dt*x_bf_dot
@@ -113,8 +113,6 @@ class LowPassFilter(object):
             x (list):       Output signal
 
         """
-
-        #print(self.prev_t)
 
         x_dot = np.dot(self.omega_bf, (np.array(r) - np.array(self.x)))
         dt = t - self.prev_t
