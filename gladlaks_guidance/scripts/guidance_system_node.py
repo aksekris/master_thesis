@@ -2,7 +2,7 @@
 # Written by Aksel Kristoffersen
 
 import rospy
-from geometry_msgs.msg import PoseStamped, TwistStamped
+from nav_msgs.msg import Odometry
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
 from reference_models import LowPassFilter, MassDamperSpringSystem
 
@@ -12,54 +12,41 @@ class GuidanceSystem:
         rospy.init_node('guidance_system')
         while rospy.get_time() == 0:
             continue
-        pose_sub = rospy.Subscriber('/gladlaks/navigation_system/pose', PoseStamped, self.pose_callback)
-        twist_sub = rospy.Subscriber('/gladlaks/navigation_system/twist', TwistStamped, self.twist_callback)
-        self.pub_pose = rospy.Publisher('/gladlaks/control_system/input_pose', PoseStamped, queue_size=1)
-        self.pub_twist = rospy.Publisher('/gladlaks/control_system/input_twist', TwistStamped, queue_size=1)
+        sub = rospy.Subscriber('/eskf_localization/pose', Odometry, self.callback)
+        self.pub = rospy.Publisher('/gladlaks/control_system/input_pose', Odometry, queue_size=1)
         self.controller_frequency = rospy.get_param("/control_system/controller_frequency")
-        
+        self.get_pose = False
+
         # Initialize the reference model
         eta = rospy.get_param("/initial_conditions/auv/eta")
-        nu = [0, 0, 0, 0, 0, 0]
+        nu = [0, 0, 1, 0, 0, 0]
         delta = [1, 1, 1, 1, 1, 1]
-        omega = [2, 2, 4, 4, 4, 4] # todo, natural frequencies?
+        omega = [0.4, 0.4, 0.4, 0.4, 0.4, 0.4] # todo, natural frequencies?
         # vel_limits = 
         # acc_limits = 
         self.low_pass_filter = LowPassFilter(eta, omega, rospy.get_time())
         self.mass_damper_spring_system = MassDamperSpringSystem(eta, nu, delta, omega, rospy.get_time())
 
-    def pose_callback(self, pose_msg):
-        if self.get_eta:
-            quaternions = pose_msg.pose.orientation
-            euler_angles = euler_from_quaternion([quaternions.x, quaternions.y, quaternions.z, quaternions.w])
-            position = (pose_msg.pose.position.x, pose_msg.pose.position.y, pose_msg.pose.position.z)
-            self.eta = [position[0], position[1], position[2], euler_angles[0], euler_angles[1], euler_angles[2]]
-            self.get_eta = False
-        else:
-            pass
-
-    def twist_callback(self, twist_msg):
-        if self.get_nu:
-            linear = (twist_msg.twist.linear.x, twist_msg.twist.linear.y, twist_msg.twist.linear.z)
-            angular = (twist_msg.twist.angular.x, twist_msg.twist.angular.y, twist_msg.twist.angular.z)
-            self.nu = [linear[0], linear[1], linear[2], angular[0], angular[1], angular[2]]
-            self.get_nu = False
+    def callback(self, msg):
+        if self.get_pose:
+            self.eta = extract_eta_from_odom(msg)
+            self.nu = extract_nu_from_odom(msg)
+            self.get_pose = False
         else:
             pass
 
     def get_state_estimates(self):
-        self.get_eta = True
-        self.get_nu = True
-        while self.get_eta or self.get_nu:
+        self.get_pose = True
+        while self.get_pose:
             continue
 
     def generate_setpoint(self):
-        x_r = -1
-        y_r = -1
+        x_r = 0
+        y_r = 0
         z_r = 1
         roll_r = 0
         pitch_r = 0
-        yaw_r = 3.14/3
+        yaw_r = 0
         eta_r = [x_r, y_r, z_r, roll_r, pitch_r, yaw_r]
         nu_r = [None, None, None, None, None, None]
         return eta_r, nu_r
@@ -75,35 +62,46 @@ class GuidanceSystem:
         while not rospy.is_shutdown():
             try:
                 self.get_state_estimates()
-                eta_d, nu_r = self.generate_trajectory()
-                rot = quaternion_from_euler(eta_d[3], eta_d[4], eta_d[5])
+                eta_d, nu_d = self.generate_trajectory()
                 trans = eta_d[0:3]
-                pose_msg = PoseStamped()
-                pose_msg.header.stamp = rospy.get_rostime()
-                pose_msg.header.frame_id = '/world'
-                pose_msg.pose.position.x = trans[0]
-                pose_msg.pose.position.y = trans[1]
-                pose_msg.pose.position.z = trans[2]
-                pose_msg.pose.orientation.x = rot[0]
-                pose_msg.pose.orientation.y = rot[1]
-                pose_msg.pose.orientation.z = rot[2]
-                pose_msg.pose.orientation.w = rot[3]
-                self.pub_pose.publish(pose_msg)
-                """
-                twist_msg = TwistStamped()
-                twist_msg.header.stamp = rospy.get_rostime()
-                twist_msg.header.frame_id = '/gladlaks/base_link_ned'
-                twist_msgt.twist.linear.x = lin[0]
-                twist_msg.twist.linear.y = lin[1]
-                twist_msg.twist.linear.z = lin[2]
-                twist_msg.twist.angular.x = ang[0]
-                twist_msg.twist.angular.y = ang[1]
-                twist_msg.twist.angular.z = ang[2]
-                self.pub_twist.publish()
-                """
+                rot = quaternion_from_euler(eta_d[3], eta_d[4], eta_d[5])
+                lin = nu_d[0:3]
+                ang = nu_d[3:]
+                msg = Odometry()
+
+                msg.header.stamp = rospy.get_rostime()
+                msg.pose.pose.position.x = trans[0]
+                msg.pose.pose.position.y = trans[1]
+                msg.pose.pose.position.z = trans[2]
+                msg.pose.pose.orientation.x = rot[0]
+                msg.pose.pose.orientation.y = rot[1]
+                msg.pose.pose.orientation.z = rot[2]
+                msg.pose.pose.orientation.w = rot[3]
+                msg.twist.twist.linear.x = lin[0]
+                msg.twist.twist.linear.y = lin[1]
+                msg.twist.twist.linear.z = lin[2]
+                msg.twist.twist.angular.z = ang[0]
+                msg.twist.twist.angular.z = ang[1]
+                msg.twist.twist.angular.z = ang[2]
+                
+                self.pub.publish(msg)
+
                 rate.sleep()
             except rospy.ROSInterruptException:
                 pass
+
+def extract_eta_from_odom(msg):
+    quaternions = msg.pose.pose.orientation
+    euler_angles = euler_from_quaternion([quaternions.x, quaternions.y, quaternions.z, quaternions.w])
+    position = (msg.pose.pose.position.x, msg.pose.pose.position.y, msg.pose.pose.position.z)
+    eta = [position[0], position[1], position[2], euler_angles[0], euler_angles[1], euler_angles[2]]
+    return eta
+
+def extract_nu_from_odom(msg):
+    linear = (msg.twist.twist.linear.x, msg.twist.twist.linear.y, msg.twist.twist.linear.z)
+    angular = (msg.twist.twist.angular.x, msg.twist.twist.angular.y, msg.twist.twist.angular.z)
+    nu = [linear[0], linear[1], linear[2], angular[0], angular[1], angular[2]]
+    return nu
 
 if __name__ == '__main__':
     try:

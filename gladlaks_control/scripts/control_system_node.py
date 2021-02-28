@@ -4,7 +4,8 @@
 import rospy
 import threading
 import math
-from geometry_msgs.msg import PoseStamped, TwistStamped, WrenchStamped
+from geometry_msgs.msg import WrenchStamped
+from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
 from autopilots import HeadingAutopilot
 from pid_controller import PIDController
@@ -17,15 +18,13 @@ class ControlSystem:
         rospy.init_node('control_system')
         while rospy.get_time() == 0:
             continue
-        pose_sub = rospy.Subscriber('/gladlaks/navigation_system/pose', PoseStamped, self.pose_callback)
-        twist_sub = rospy.Subscriber('/gladlaks/navigation_system/twist', TwistStamped, self.twist_callback)
-        input_pose_sub = rospy.Subscriber('/gladlaks/control_system/input_pose', PoseStamped, self.input_pose_callback)
+        pose_sub = rospy.Subscriber('/eskf_localization/pose', Odometry, self.pose_callback)
+        input_sub = rospy.Subscriber('/gladlaks/control_system/input_pose', Odometry, self.input_callback)
         self.pub = rospy.Publisher('/gladlaks/thruster_manager/input_stamped', WrenchStamped, queue_size=1)
         self.controller_frequency = rospy.get_param("/control_system/controller_frequency")
-        self.get_eta = False
+        self.get_pose = False
         self.eta = [None, None, None, None, None, None]
         self.eta_d = [0, 0, 0.5, 0, 0, 0] # Placeholder
-        self.get_nu = False
         self.nu = [None, None, None, None, None, None]
         self.nu_d = [None, None, None, None, None, None] # Placeholder
 
@@ -72,40 +71,21 @@ class ControlSystem:
         K_p, K_d, K_i = pid_pole_placement_algorithm(m, d, k, omega_b, zeta)
         self.depth_controller = PIDController(K_p, K_d, K_i, tau_sat, rospy.get_time())
 
-    def pose_callback(self, pose_msg):
-        if self.get_eta:
-            quaternions = pose_msg.pose.orientation
-            euler_angles = euler_from_quaternion([quaternions.x, quaternions.y, quaternions.z, quaternions.w])
-            position = (pose_msg.pose.position.x, pose_msg.pose.position.y, pose_msg.pose.position.z)
-            self.eta = [position[0], position[1], position[2], euler_angles[0], euler_angles[1], euler_angles[2]]
-            self.get_eta = False
-        else:
-            pass
-
-    def twist_callback(self, twist_msg):
-        if self.get_nu:
-            linear = (twist_msg.twist.linear.x, twist_msg.twist.linear.y, twist_msg.twist.linear.z)
-            angular = (twist_msg.twist.angular.x, twist_msg.twist.angular.y, twist_msg.twist.angular.z)
-            self.nu = [linear[0], linear[1], linear[2], angular[0], angular[1], angular[2]]
-            self.get_nu = False
+    def pose_callback(self, msg):
+        if self.get_pose:
+            self.eta = extract_eta_from_odom(msg)
+            self.nu = extract_nu_from_odom(msg)
+            self.get_pose = False
         else:
             pass
     
-    def input_pose_callback(self, input_pose_msg):
-        quaternions = input_pose_msg.pose.orientation
-        euler_angles = euler_from_quaternion([quaternions.x, quaternions.y, quaternions.z, quaternions.w])
-        position = (input_pose_msg.pose.position.x, input_pose_msg.pose.position.y, input_pose_msg.pose.position.z)
-        self.eta_d[0] = position[0]
-        self.eta_d[1] = position[1]
-        self.eta_d[2] = position[2]
-        self.eta_d[3] = euler_angles[0]
-        self.eta_d[4] = euler_angles[1]
-        self.eta_d[5] = euler_angles[2]
+    def input_callback(self, msg):
+        self.eta_d = extract_eta_from_odom(msg)
+        self.nu_d = extract_nu_from_odom(msg)
 
     def get_state_estimates(self):
-        self.get_eta = True
-        self.get_nu = True
-        while self.get_eta or self.get_nu:
+        self.get_pose = True
+        while self.get_pose:
             continue
 
     def calculate_control_forces(self):
@@ -117,8 +97,8 @@ class ControlSystem:
         tau_4 = 0
         tau_5 = 0
         tau_6 = self.heading_controller.calculate_control_torque((self.eta[5] - self.eta_d[5]), self.nu[5], rospy.get_time())
-        print('errors: Surge, Sway' )
-        print(self.eta[0] - self.eta_d[0], self.eta[1] - self.eta_d[1])
+        print('errors: Surge, Sway, Yaw' )
+        print(self.eta[0] - self.eta_d[0], self.eta[1] - self.eta_d[1], self.eta[5] - self.eta_d[5])
         return [tau_1, tau_2, tau_3, tau_4, tau_5, tau_6]
 
     def publish_control_forces(self):
@@ -141,6 +121,20 @@ class ControlSystem:
             except rospy.ROSInterruptException:
                 pass
         
+def extract_eta_from_odom(msg):
+    quaternions = msg.pose.pose.orientation
+    euler_angles = euler_from_quaternion([quaternions.x, quaternions.y, quaternions.z, quaternions.w])
+    position = (msg.pose.pose.position.x, msg.pose.pose.position.y, msg.pose.pose.position.z)
+    eta = [position[0], position[1], position[2], euler_angles[0], euler_angles[1], euler_angles[2]]
+    return eta
+
+def extract_nu_from_odom(msg):
+    linear = (msg.twist.twist.linear.x, msg.twist.twist.linear.y, msg.twist.twist.linear.z)
+    angular = (msg.twist.twist.angular.x, msg.twist.twist.angular.y, msg.twist.twist.angular.z)
+    nu = [linear[0], linear[1], linear[2], angular[0], angular[1], angular[2]]
+    return nu
+
+
 if __name__ == '__main__':
     try:
         node = ControlSystem()
