@@ -10,7 +10,7 @@ class MassDamperSpringSystem(object):
     A multi dimensional mass damper spring system with option
     to use velocity and acceleration saturation limits
     """
-    def __init__(self, x, x_dot, delta, omega, t, **kwargs):
+    def __init__(self, delta, omega, **kwargs):
         """ Initialize the mass damper spring system as the one described in Fossen's Handbook 
         of marine craft hydrodynamics and motion control, Chapter 12.1.1
 
@@ -38,8 +38,12 @@ class MassDamperSpringSystem(object):
         n = len(omega)
         self.A_d = np.block([[np.zeros((n, n)), np.eye(n)], [-omega_bf**2, -2*delta_bf*omega_bf]])
         self.B_d = np.block([[np.zeros((n, n))], [omega_bf**2]])
-        self.prev_t = t
+        self.x_bf = np.empty(n*2)
+        self.prev_t = 0
+        
+    def initialize(self, x, x_dot, t):
         self.x_bf = np.concatenate((x, x_dot), axis=0)
+        self.prev_t = t
 
     def simulate(self, r, t):
         """Function for simulating one timestep of the system using Euler integration
@@ -90,7 +94,7 @@ class MassDamperSpringSystem(object):
         return x, x_dot, x_ddot
 
 class LowPassFilter(object):
-    """A multi dimensional low-pass filter"""
+    """A multivarible low-pass filter"""
     def __init__(self, x, omega, t):
         """ Initialize the low-pass filter
 

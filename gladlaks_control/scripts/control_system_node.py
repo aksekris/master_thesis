@@ -9,7 +9,7 @@ from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
 from autopilots import HeadingAutopilot
 from pid_controller import PIDController
-from mass_damper_spring import MassDamperSpring
+from mass_damper_spring import MassDamperSpring, FirstOrderSystem
 from reference_models import LowPassFilter, MassDamperSpringSystem
 
 
@@ -27,11 +27,12 @@ class ControlSystem:
         self.eta_r = [0, 0, 1, 0, 0, 0]
         self.nu_r = [0, 0, 0, 0, 0, 0]
         self.control_type = ''
+        self.prev_control_type = 'unique'
 
         M_RB = rospy.get_param("/auv_dynamics/M_RB")
         M_A = rospy.get_param("/auv_dynamics/M_A")
 
-        # Initialize the surge controller
+        # Initialize the surge dp controller
         m = M_RB[0][0]+M_A[0][0]
         d = -rospy.get_param("/auv_dynamics/D")[0]
         k = 0
@@ -40,9 +41,9 @@ class ControlSystem:
         zeta = rospy.get_param("/control_system/surge_controller/relative_damping_ratio")
         K_p, K_d, K_i = self.surge_sub_system.pid_pole_placement_algorithm(omega_b, zeta)
         tau_sat = rospy.get_param("/control_system/surge_controller/torque_saturation_limit")
-        self.surge_controller = PIDController(K_p, K_d, K_i, tau_sat)
+        self.surge_dp_controller = PIDController(K_p, K_d, K_i, tau_sat)
 
-        # Initialize the sway controller
+        # Initialize the sway dp controller
         m = M_RB[1][1]+M_A[1][1]
         d = -rospy.get_param("/auv_dynamics/D")[1]
         k = 0
@@ -51,7 +52,7 @@ class ControlSystem:
         zeta = rospy.get_param("/control_system/sway_controller/relative_damping_ratio")
         K_p, K_d, K_i = self.sway_sub_system.pid_pole_placement_algorithm(omega_b, zeta)
         tau_sat = rospy.get_param("/control_system/sway_controller/torque_saturation_limit")
-        self.sway_controller = PIDController(K_p, K_d, K_i, tau_sat)
+        self.sway_dp_controller = PIDController(K_p, K_d, K_i, tau_sat)
 
         # Initialize the depth controller
         m = M_RB[2][2]+M_A[2][2]
@@ -75,6 +76,24 @@ class ControlSystem:
         tau_sat = rospy.get_param("/control_system/heading_controller/torque_saturation_limit")
         self.heading_controller = HeadingAutopilot(K_p, K_d, K_i, tau_sat)
 
+        # Initialize the surge speed controller
+        omega_b = rospy.get_param("/control_system/surge_controller/control_bandwidth")
+        zeta = rospy.get_param("/control_system/surge_controller/relative_damping_ratio")
+        K_p, K_i = self.surge_sub_system.pi_pole_placement_algorithm(omega_b, zeta)
+        print('Surge speed controller gains:')
+        print((K_p, K_i))
+        tau_sat = rospy.get_param("/control_system/surge_controller/torque_saturation_limit")
+        self.surge_speed_controller = PIDController(K_p, 0, K_i, tau_sat)
+
+        # Initialize the sway speed controller
+        omega_b = rospy.get_param("/control_system/sway_controller/control_bandwidth")
+        zeta = rospy.get_param("/control_system/sway_controller/relative_damping_ratio")
+        K_p, K_i = self.sway_sub_system.pi_pole_placement_algorithm(omega_b, zeta)
+        print('Sway speed controller gains:')
+        print((K_p, K_i))
+        tau_sat = rospy.get_param("/control_system/sway_controller/torque_saturation_limit")
+        self.sway_speed_controller = PIDController(K_p, 0, K_i, tau_sat)
+
         # Initialize the reference model
         eta = rospy.get_param("/initial_conditions/auv/eta")
         nu = [0, 0, 1, 0, 0, 0]
@@ -87,10 +106,11 @@ class ControlSystem:
                 self.yaw_sub_system.omega_b*0.5]
         # vel_limits = 
         # acc_limits = 
+        print('Reference model natural frequency')
+        print(self.surge_sub_system.omega_b*0.5)
         self.low_pass_filter = LowPassFilter(eta, omega, rospy.get_time())
-        self.mass_damper_spring_system = MassDamperSpringSystem(eta, nu, delta, omega, rospy.get_time())
+        self.mass_damper_spring_system = MassDamperSpringSystem(delta, omega)
         
-    
     def pose_callback(self, msg):
         if self.get_pose:
             self.eta = extract_eta_from_odom(msg)
@@ -110,37 +130,59 @@ class ControlSystem:
             continue
 
     def generate_trajectory(self):
-        eta_r = self.low_pass_filter.simulate(self.eta_r, rospy.get_time())
-        eta_d, eta_dot_d, eta_ddot_d = self.mass_damper_spring_system.simulate(eta_r, rospy.get_time())
+        if self.control_type == 'dp_control':
+            if not self.control_type == self.prev_control_type:
+                x = self.eta
+                self.mass_damper_spring_system.initialize(x, self.nu, rospy.get_time())
+                print('Enter dp mode')
+        r = self.low_pass_filter.simulate(self.eta_r, rospy.get_time())
+        if self.control_type == 'course_control':
+            if not self.control_type == self.prev_control_type:
+                x = self.eta
+                x[0:2] = self.nu[0:2]
+                self.mass_damper_spring_system.initialize(x, self.nu, rospy.get_time())
+                print('Enter course mode')
+            r[0:2] = self.nu_r[0:2]
+        eta_d, eta_dot_d, eta_ddot_d = self.mass_damper_spring_system.simulate(r, rospy.get_time())
         return eta_d, eta_dot_d, eta_ddot_d
 
     def calculate_control_forces(self, eta_d, eta_dot_d, eta_ddot_d):
+        self.depth_controller.initialize(rospy.get_time())
+        self.heading_controller.initialize(rospy.get_time())
+        tau_3_ref_ff = self.heave_sub_system.d * eta_dot_d[2] + self.heave_sub_system.m * eta_ddot_d[2]
+        tau_3 = tau_3_ref_ff + self.depth_controller.regulate((self.eta[2] - eta_d[2]), self.nu[2], rospy.get_time(), u_ff=23)                
+        tau_4 = 0
+        tau_5 = 0
+        tau_6_ref_ff = self.yaw_sub_system.d * eta_dot_d[5] + self.yaw_sub_system.m * eta_ddot_d[5]
+        tau_6 = tau_6_ref_ff + self.heading_controller.calculate_control_torque((self.eta[5] - eta_d[5]), self.nu[5], rospy.get_time())
         if self.control_type == 'dp_control':
             if not self.control_type == self.prev_control_type:
-                self.surge_controller.initialize(rospy.get_time())
-                self.sway_controller.initialize(rospy.get_time())
-                self.depth_controller.initialize(rospy.get_time())
-                self.heading_controller.initialize(rospy.get_time())
+                self.surge_dp_controller.initialize(rospy.get_time())
+                self.sway_dp_controller.initialize(rospy.get_time())
             tau_1_ned_ref_ff = self.surge_sub_system.d * eta_dot_d[0] + self.surge_sub_system.m * eta_ddot_d[0]
-            tau_1_ned = tau_1_ned_ref_ff + self.surge_controller.regulate((self.eta[0] - eta_d[0]), self.nu[0], rospy.get_time())
+            tau_1_ned = tau_1_ned_ref_ff + self.surge_dp_controller.regulate((self.eta[0] - eta_d[0]), self.nu[0], rospy.get_time())
             tau_2_ned_ref_ff = self.sway_sub_system.d * eta_dot_d[1] + self.sway_sub_system.m * eta_ddot_d[1]
-            tau_2_ned = tau_2_ned_ref_ff + self.sway_controller.regulate((self.eta[1] - eta_d[1]), self.nu[1], rospy.get_time())
+            tau_2_ned = tau_2_ned_ref_ff + self.sway_dp_controller.regulate((self.eta[1] - eta_d[1]), self.nu[1], rospy.get_time())
             tau_1 = math.cos(self.eta[5]) * tau_1_ned + math.sin(self.eta[5]) * tau_2_ned 
             tau_2 = - math.sin(self.eta[5]) * tau_1_ned + math.cos(self.eta[5]) * tau_2_ned
-            tau_3_ref_ff = self.heave_sub_system.d * eta_dot_d[2] + self.heave_sub_system.m * eta_ddot_d[2]
-            tau_3 = tau_3_ref_ff + self.depth_controller.regulate((self.eta[2] - eta_d[2]), self.nu[2], rospy.get_time(), u_ff=23)                
-            tau_4 = 0
-            tau_5 = 0
-            tau_6_ref_ff = self.yaw_sub_system.d * eta_dot_d[5] + self.yaw_sub_system.m * eta_ddot_d[5]
-            tau_6 = tau_6_ref_ff + self.heading_controller.calculate_control_torque((self.eta[5] - eta_d[5]), self.nu[5], rospy.get_time())
             tau = [tau_1, tau_2, tau_3, tau_4, tau_5, tau_6]
+
         elif self.control_type == 'course_control':
-            pass
+            if not self.control_type == self.prev_control_type:
+                self.surge_speed_controller.initialize(rospy.get_time())
+                self.sway_speed_controller.initialize(rospy.get_time())
+            tau_1_ned_ref_ff = self.surge_sub_system.m * eta_dot_d[0]
+            tau_1_ned = self.surge_speed_controller.regulate((self.nu[0] - eta_d[0]), 0, rospy.get_time())
+            tau_2_ned_ref_ff = self.surge_sub_system.m * eta_dot_d[0]
+            tau_2_ned = self.sway_speed_controller.regulate((self.nu[1] - eta_d[1]), 0, rospy.get_time())
+            tau_1 = math.cos(self.eta[5]) * tau_1_ned + math.sin(self.eta[5]) * tau_2_ned
+            tau_2 = - math.sin(self.eta[5]) * tau_1_ned + math.cos(self.eta[5]) * tau_2_ned
+            tau = [tau_1, tau_2, tau_3, tau_4, tau_5, tau_6]
+            print('Surge error, Sway error')
+            print(self.nu[0] - eta_d[0], self.nu[1] - eta_d[1])
         else:
             tau = [0, 0, 0, 0, 0, 0]
         self.prev_control_type = self.control_type
-        print('errors: Surge, Sway, Yaw' )
-        print(self.eta[0] - eta_d[0], self.eta[1] - eta_d[1], self.eta[5] - eta_d[5])
         return tau
 
     def publish_control_forces(self):
