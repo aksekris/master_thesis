@@ -17,16 +17,6 @@ class GuidanceSystem:
         self.controller_frequency = rospy.get_param("/control_system/controller_frequency")
         self.get_pose = False
 
-        # Initialize the reference model
-        eta = rospy.get_param("/initial_conditions/auv/eta")
-        nu = [0, 0, 1, 0, 0, 0]
-        delta = [1, 1, 1, 1, 1, 1]
-        omega = [0.4, 0.4, 0.4, 0.4, 0.4, 0.4] # todo, natural frequencies?
-        # vel_limits = 
-        # acc_limits = 
-        self.low_pass_filter = LowPassFilter(eta, omega, rospy.get_time())
-        self.mass_damper_spring_system = MassDamperSpringSystem(eta, nu, delta, omega, rospy.get_time())
-
     def callback(self, msg):
         if self.get_pose:
             self.eta = extract_eta_from_odom(msg)
@@ -46,9 +36,9 @@ class GuidanceSystem:
         z_r = 1
         roll_r = 0
         pitch_r = 0
-        yaw_r = 0#3.14/2
+        yaw_r = 3.14/2
         eta_r = [x_r, y_r, z_r, roll_r, pitch_r, yaw_r]
-        nu_r = [-0.2, 0.2, 0, 0, 0, 0]
+        nu_r = [0.2, 0.2, 0, 0, 0, 0]
         return eta_r, nu_r
         
     def publish_trajectory(self):

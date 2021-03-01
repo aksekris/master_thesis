@@ -79,6 +79,7 @@ class ControlSystem:
         # Initialize the surge speed controller
         omega_b = rospy.get_param("/control_system/surge_controller/control_bandwidth")
         zeta = rospy.get_param("/control_system/surge_controller/relative_damping_ratio")
+        zeta = 0.85 # !!!!!!!!!!!!!!!!!!!!!!!efqawrgqawe rgqergwewaer gwerg wqer gbewr b
         K_p, K_i = self.surge_sub_system.pi_pole_placement_algorithm(omega_b, zeta)
         print('Surge speed controller gains:')
         print((K_p, K_i))
@@ -88,6 +89,7 @@ class ControlSystem:
         # Initialize the sway speed controller
         omega_b = rospy.get_param("/control_system/sway_controller/control_bandwidth")
         zeta = rospy.get_param("/control_system/sway_controller/relative_damping_ratio")
+        zeta = 0.85 # !!!!!!!!!!!!!!!!!!!!!!!efqawrgqawe rgqergwewaer gwerg wqer gbewr b
         K_p, K_i = self.sway_sub_system.pi_pole_placement_algorithm(omega_b, zeta)
         print('Sway speed controller gains:')
         print((K_p, K_i))
