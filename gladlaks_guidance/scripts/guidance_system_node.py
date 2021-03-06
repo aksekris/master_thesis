@@ -31,7 +31,7 @@ class GuidanceSystem:
             continue
 
     def generate_setpoint(self):
-        x_r = 0.2
+        x_r = 0
         y_r = 0
         z_r = 1
         roll_r = 0
@@ -54,7 +54,7 @@ class GuidanceSystem:
                 msg = Odometry()
 
                 msg.header.stamp = rospy.get_rostime()
-                msg.child_frame_id = 'course_control'
+                msg.child_frame_id = 'dp_control'
                 msg.pose.pose.position.x = trans[0]
                 msg.pose.pose.position.y = trans[1]
                 msg.pose.pose.position.z = trans[2]

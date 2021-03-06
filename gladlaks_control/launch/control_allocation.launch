@@ -1,0 +1,4 @@
+<launch>
+  <arg name="namespace" default="gladlaks/control_system" /> 
+  <node name="control_allocation" pkg="gladlaks_control" type="control_allocation.py" ns="$(arg namespace)" />
+</launch>
