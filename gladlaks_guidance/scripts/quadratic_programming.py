@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# Written by Aksel Kristoffersen
 
 import numpy as np
 import quadprog
@@ -29,7 +28,7 @@ if __name__ == '__main__':
     pseudo_inv_matrix_neg = np.negative(pseudo_inv_matrix)
 
     # Find u_unb
-    tau_unb = [10, 0, 0, 0, 1, 1]
+    tau_unb = [0.5, 0, 0, 0, 0.5, 0.5]
     print('tau_unb:')
     print(tau_unb)
     u_unb = np.dot(pseudo_inv_matrix, tau_unb)
