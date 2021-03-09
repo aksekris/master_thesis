@@ -31,12 +31,12 @@ class GuidanceSystem:
             continue
 
     def generate_setpoint(self):
-        x_r = 0
-        y_r = 0
+        x_r = 1
+        y_r = 1
         z_r = 1
         roll_r = 0
         pitch_r = 0
-        yaw_r = 3.14/2
+        yaw_r = 3.14
         eta_r = [x_r, y_r, z_r, roll_r, pitch_r, yaw_r]
         nu_r = [0.2, 0.2, 0, 0, 0, 0]
         return eta_r, nu_r

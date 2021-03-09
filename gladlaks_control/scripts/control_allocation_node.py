@@ -18,8 +18,7 @@ class ThrusterAllocation:
         self.rotor_constant = rospy.get_param("/thrusters/rotor_constant")
         input_matrix = rospy.get_param("/thrusters/input_matrix")
         input_matrix_arr = np.array(input_matrix)
-        self.pseudo_inv_matrix = np.dot(input_matrix_arr.T, np.linalg.inv(np.dot(input_matrix_arr, input_matrix_arr.T) ))
-        
+        self.pseudo_inv_matrix = np.dot(input_matrix_arr.T, np.linalg.inv(np.dot(input_matrix_arr, input_matrix_arr.T)))
 
     def callback(self, msg):
 
@@ -33,7 +32,7 @@ class ThrusterAllocation:
 
         thrust = np.dot(self.pseudo_inv_matrix, tau_c)
         n = np.sign(thrust)*np.sqrt(np.abs(thrust)/ self.rotor_constant)
-        duty_cycle = 0.1*n - 1500
+        duty_cycle = 0.1*n + 1500
         duty_cycle = [sum(x) for x in zip(duty_cycle, self.duty_cycle_offset)]
         pwm_msg = Pwm()
         pwm_msg.pins = self.thruster_map

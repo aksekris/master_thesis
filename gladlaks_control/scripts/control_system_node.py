@@ -11,6 +11,7 @@ from autopilots import HeadingAutopilot
 from pid_controller import PIDController
 from mass_damper_spring import MassDamperSpring, FirstOrderSystem
 from reference_models import LowPassFilter, MassDamperSpringSystem
+from functions import quaternion_to_rotation_matrix
 
 
 class ControlSystem:
@@ -180,8 +181,7 @@ class ControlSystem:
             tau_1 = math.cos(self.eta[5]) * tau_1_ned + math.sin(self.eta[5]) * tau_2_ned
             tau_2 = - math.sin(self.eta[5]) * tau_1_ned + math.cos(self.eta[5]) * tau_2_ned
             tau = [tau_1, tau_2, tau_3, tau_4, tau_5, tau_6]
-            print('Surge error, Sway error')
-            print(self.nu[0] - eta_d[0], self.nu[1] - eta_d[1])
+
         else:
             tau = [0, 0, 0, 0, 0, 0]
         self.prev_control_type = self.control_type
@@ -229,10 +229,3 @@ if __name__ == '__main__':
         rospy.spin()
     except rospy.ROSInterruptException:
         pass
-
-"""
-node = ControlSystem()
-        worker = threading.Thread(target=node.publish_control_forces)
-        worker.start()
-        rospy.spin()
-"""

@@ -69,8 +69,8 @@ if __name__ == '__main__':
             continue
 
         try:
-            R = quaternion_rotation_matrix([rot[3], rot[0], rot[1], rot[2]])
-            lin = np.dot(R.T,lin)
+            #R = quaternion_rotation_matrix([rot[3], rot[0], rot[1], rot[2]])
+            #lin = np.dot(R.T,lin)
             msg = Odometry()
 
             msg.header.stamp = rospy.get_rostime()
