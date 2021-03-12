@@ -44,8 +44,9 @@ control_system:
 # This simulator is used for providing smooth references for 
 # the control system and for obstacle avoidance purposes
 auv_simulator:
-  w: [0.01, 0.01, 0.01, 1, 1, 1] # Weigths for what dof is prioritised when allocation control forces
-  
+  w: [0.00001, 0.00001, 0.00001, 100000, 100000, 100000] # Weigths for what dof is prioritised when allocation control forces
+  # thrust_gain 0.6 
+  # max_linear_velocity
 
 
 thrusters:
@@ -54,7 +55,7 @@ thrusters:
   first_order_time_constant: 0.2
   rotor_constant: 0.0000035
   duty_cycle_offset: [0, 0, 0, 0, 0, 0, 0, 0]
-  duty_cycle_limits: [1100, 1900]
+  duty_cycle_limits: [1200, 1800]
 
   # Calculated with respect to the BODY-frame with z axis pointing upwards
   positions:
@@ -88,12 +89,12 @@ thrusters:
 # auv_dynamics: Used in the simulator and motion control system
 auv_dynamics:
   M_RB: 
-    [[ 30.9, TODO, TODO, TODO, TODO, TODO], 
-     [ TODO, 30.9, TODO, TODO, TODO, TODO], 
-     [ TODO, TODO, 30.9, TODO, TODO, TODO], 
-     [ TODO, TODO, TODO, TODO, TODO, TODO], 
-     [ TODO, TODO, TODO, TODO, TODO, TODO], 
-     [ TODO, TODO, TODO, TODO, TODO, 0.919819]]
+    [[ 30.9,    0,    0,    0,    0,    0], 
+     [    0, 30.9,    0,    0,    0,    0], 
+     [    0,    0, 30.9,    0,    0,    0], 
+     [    0,    0,    0, 0.92,    0,    0], 
+     [    0,    0,    0,    0, 0.92,    0], 
+     [    0,    0,    0,    0,    0, 0.92]]
   M_A: 
     [[ 10.7727, 0, 0, 0, 0, 0], 
      [ 0, 10.7727, 0, 0, 0, 0], 
@@ -101,7 +102,7 @@ auv_dynamics:
      [ 0, 0, 0, 1.0092, 0, 0], 
      [ 0, 0, 0, 0, 1.0092, 0], 
      [ 0, 0, 0, 0, 0, 0]]
-  D: [-9.5909, -9.5909, -50.5595, -13.3040, -13.3040, -1.1559]    # Linear damping
+  D: [-9.5909, -9.5909, -50.5595, -13.3040, -13.3040, -5.1559]    # Linear damping
   D_n: [-5.1386, -5.1386, -26.1105, 0, 0, 0]                      # Quadratic damping
  
 

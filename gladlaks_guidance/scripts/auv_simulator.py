@@ -6,7 +6,6 @@ import numpy as np
 from quadratic_programming import quadprog_solve_qp
 from nav_msgs.msg import Path, Odometry
 from tf.transformations import euler_from_quaternion
-
 import matplotlib.pyplot as plt
 
 
@@ -54,7 +53,7 @@ class AUVSimulator():
         # Remove when using callbacks
         self.eta = [0, 0, 0, 0, 0, 0, 1] # Placeholder
         self.nu = [0, 0, 0, 0, 0, 0] # Placeholder
-        self.eta_ref = [2, 1, 1, 0, 0, 1, 0]
+        self.eta_ref = [200, 1, 1, 0, 0, 1, 0]
         self.nu_ref = [0, 0, 0, 0, 0, 0]
         self.control_mode = 'dp_control'
 
@@ -132,7 +131,7 @@ class AUVSimulator():
                 eta_dot_euler = eta_dot[0:6]
                 eta_dot_euler[3:] = euler_from_quaternion(eta_dot[3:])
                 # Virtual controller gains
-                K_p = np.diag([3, 3, 20, 10, 10, 10]) # Ask Fossen
+                K_p = np.diag([2, 2, 20, 10, 10, 10]) # Ask Fossen
                 K_d = np.diag([6, 6, 10, 0, 0, 0]) # Ask Fossen
                 eta_euler_error = [a - b for a, b in zip(eta_euler, eta_ref_euler)]
                 for k, eul in enumerate(eta_euler_error[3:]):
@@ -163,17 +162,12 @@ class AUVSimulator():
             nu_dot_d[i] = nu_dot
             eta_dot_d[i] = eta_dot
 
-            plot.append(eta[5])
-
             # Integration using Euler method
             eta = euler2(eta_dot, eta, h)
             nu = euler2(nu_dot, nu, h)
 
-        plt.plot(plot)
-        plt.ylabel('Position')
-        plt.show()
 
-        return eta_d, nu_d, nu_dot_d, eta_dot_d
+        return eta_d, nu_d, nu_dot_d
 
 def skew_symmetric(v):
     return np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
@@ -251,7 +245,7 @@ if __name__ == '__main__':
     t = 0
     ns = 20
     freq = 100
-    eta_d, nu_d, nu_dot_d, eta_dot_d = auv_simulator.simulate(t, ns, freq)
+    eta_d, nu_d, nu_dot_d = auv_simulator.simulate(t, ns, freq)
 
     x = []
     y = []
@@ -282,6 +276,6 @@ if __name__ == '__main__':
     '''
     import matplotlib.pyplot as plt
 
-    plt.plot(x, y)
+    plt.plot(x)
     plt.ylabel('Position')
     plt.show()

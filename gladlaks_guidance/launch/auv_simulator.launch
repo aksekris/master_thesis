@@ -1,0 +1,6 @@
+<launch>
+  <rosparam file="$(find gladlaks_description)/config/gladlaks.yaml" command="load"/>
+  <arg name="namespace" default="gladlaks/guidance_system" /> 
+  <node name="auv_simulator" pkg="gladlaks_guidance" type="auv_simulator.py" ns="$(arg namespace)" output="screen" />
+</launch>
+
