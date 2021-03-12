@@ -12,9 +12,9 @@ class GuidanceSystem:
         rospy.init_node('guidance_system')
         while rospy.get_time() == 0:
             continue
-        sub = rospy.Subscriber('/eskf_localization/pose', Odometry, self.callback)
+        rospy.Subscriber('/eskf_localization/pose', Odometry, self.callback)
         self.pub = rospy.Publisher('/gladlaks/control_system/input_pose', Odometry, queue_size=1)
-        self.controller_frequency = rospy.get_param("/control_system/controller_frequency")
+        self.rate = rospy.Rate(rospy.get_param("/control_system/frequency"))
         self.get_pose = False
 
     def callback(self, msg):
@@ -42,7 +42,6 @@ class GuidanceSystem:
         return eta_r, nu_r
         
     def publish_trajectory(self):
-        rate = rospy.Rate(self.controller_frequency)
         while not rospy.is_shutdown():
             try:
                 self.get_state_estimates()
@@ -71,7 +70,7 @@ class GuidanceSystem:
                 
                 self.pub.publish(msg)
 
-                rate.sleep()
+                self.rate.sleep()
             except rospy.ROSInterruptException:
                 pass
 

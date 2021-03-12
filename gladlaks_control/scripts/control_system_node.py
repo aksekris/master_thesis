@@ -2,7 +2,6 @@
 # Written by Aksel Kristoffersen
 
 import rospy
-import threading
 import math
 from geometry_msgs.msg import WrenchStamped
 from nav_msgs.msg import Odometry
@@ -13,14 +12,16 @@ from gladlaks_control.msg import ReferenceTrajectoryStamped
 
 class ControlSystem:
     def __init__(self):
-
+        
+        # Initialize the ROS-node
         rospy.init_node('control_system')
         while rospy.get_time() == 0:
             continue
-        pose_sub = rospy.Subscriber('/eskf_localization/pose', Odometry, self.pose_callback)
-        input_sub = rospy.Subscriber('/gladlaks/control_system/input_pose', Odometry, self.input_callback)
+        rospy.Subscriber('/eskf_localization/pose', Odometry, self.pose_callback)
+        rospy.Subscriber('/gladlaks/control_system/input_pose', Odometry, self.input_callback)
         self.pub = rospy.Publisher('/gladlaks/thruster_manager/input_stamped', WrenchStamped, queue_size=1)
-        self.controller_frequency = rospy.get_param("/control_system/controller_frequency")
+        self.rate = rospy.Rate(rospy.get_param("/control_system/frequency"))
+        
         self.get_pose = False
         self.eta_r = [0, 0, 1, 0, 0, 0]
         self.nu_r = [0, 0, 0, 0, 0, 0]
@@ -185,7 +186,6 @@ class ControlSystem:
         return tau
 
     def publish_control_forces(self):
-        rate = rospy.Rate(self.controller_frequency)
         while not rospy.is_shutdown():
             try:
                 self.get_state_estimates()
@@ -200,7 +200,7 @@ class ControlSystem:
                 msg.wrench.torque.x = tau[3]
                 msg.wrench.torque.y = tau[4]
                 msg.wrench.torque.z = tau[5]
-                rate.sleep()
+                self.rate.sleep()
                 self.pub.publish(msg)
             except rospy.ROSInterruptException:
                 pass

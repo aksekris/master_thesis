@@ -39,7 +39,7 @@ control_system:
     control_bandwidth: 1  # 1/(/thruster/first_order_time_constant*5) ish
     relative_damping_ratio: 1 
     torque_saturation_limit: 22
-  controller_frequency: 20
+  frequency: 20
 
 # This simulator is used for providing smooth references for 
 # the control system and for obstacle avoidance purposes
