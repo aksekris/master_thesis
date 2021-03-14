@@ -21,10 +21,10 @@ def quaternion_rotation_matrix(Q):
              frame to a point in the global reference frame.
     """
     # Extract the values from Q
-    q0 = Q[0]
-    q1 = Q[1]
-    q2 = Q[2]
-    q3 = Q[3]
+    q0 = Q[3]
+    q1 = Q[0]
+    q2 = Q[1]
+    q3 = Q[2]
      
     # First row of the rotation matrix
     r00 = 2 * (q0 * q0 + q1 * q1) - 1
@@ -69,8 +69,8 @@ if __name__ == '__main__':
             continue
 
         try:
-            #R = quaternion_rotation_matrix([rot[3], rot[0], rot[1], rot[2]])
-            #lin = np.dot(R.T,lin)
+            R = quaternion_rotation_matrix([rot[0], rot[1], rot[2], rot[3]])
+            lin = np.dot(R.T,lin)
             msg = Odometry()
 
             msg.header.stamp = rospy.get_rostime()

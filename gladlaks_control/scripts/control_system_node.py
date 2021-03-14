@@ -3,9 +3,10 @@
 
 import rospy
 import math
-from geometry_msgs.msg import WrenchStamped
-from nav_msgs.msg import Odometry
-from tf.transformations import euler_from_quaternion
+import numpy as np
+from geometry_msgs.msg import WrenchStamped, PoseStamped, TwistStamped, AccelStamped
+from nav_msgs.msg import Odometry, Path
+from tf.transformations import euler_from_quaternion, euler_matrix
 from functions import quaternion_to_rotation_matrix, LowPassFilter, MassDamperSpringSystem, PIDController, MassDamperSpring, FirstOrderSystem, HeadingAutopilot
 from gladlaks_control.msg import ReferenceTrajectoryStamped
 
@@ -18,18 +19,44 @@ class ControlSystem:
         while rospy.get_time() == 0:
             continue
         rospy.Subscriber('/eskf_localization/pose', Odometry, self.pose_callback)
-        rospy.Subscriber('/gladlaks/control_system/input_pose', Odometry, self.input_callback)
+        rospy.Subscriber('/gladlaks/guidance_system/reference_trajectory', ReferenceTrajectoryStamped, self.reference_trajectory_callback)
         self.pub = rospy.Publisher('/gladlaks/thruster_manager/input_stamped', WrenchStamped, queue_size=1)
         self.rate = rospy.Rate(rospy.get_param("/control_system/frequency"))
         
         self.get_pose = False
-        self.eta_r = [0, 0, 1, 0, 0, 0]
-        self.nu_r = [0, 0, 0, 0, 0, 0]
-        self.control_type = ''
-        self.prev_control_type = 'unique'
 
+        # Initialize the first pose hold
+        self.reference_trajectory = ReferenceTrajectoryStamped()
+        self.reference_trajectory.header.frame_id = 'dp_hold'
+        pose = PoseStamped()
+        pose.pose.position.x = 0
+        pose.pose.position.y = 0
+        pose.pose.position.z = 1
+        pose.pose.orientation.x = 0
+        pose.pose.orientation.y = 0
+        pose.pose.orientation.z = 0
+        pose.pose.orientation.w = 1
+        twist = TwistStamped()
+        accel = AccelStamped
+        self.reference_trajectory.poses.append(pose)
+        self.reference_trajectory.twists.append(twist)
+        self.reference_trajectory.accels.append(accel)
+        self.prev_control_type = 'none'
+        self.traj_index = 0
+
+        # Download the AUV model
         M_RB = rospy.get_param("/auv_dynamics/M_RB")
         M_A = rospy.get_param("/auv_dynamics/M_A")
+        self.M = np.array(M_RB) + np.array(M_A)
+        d = rospy.get_param("/auv_dynamics/D")
+        self.D = -np.diag(d)
+        self.m = rospy.get_param("/physical/mass_kg")
+        r_g = rospy.get_param("/physical/center_of_mass")
+        self.r_g = [-x for x in r_g]
+        r_b = rospy.get_param("/physical/center_of_buoyancy")
+        self.r_b = [-x for x in r_b]
+        self.rho = rospy.get_param("/physical/water_density")
+        self.Delta = rospy.get_param("/physical/volume")
 
         # Initialize the surge dp controller
         m = M_RB[0][0]+M_A[0][0]
@@ -53,7 +80,7 @@ class ControlSystem:
         tau_sat = rospy.get_param("/control_system/sway_controller/torque_saturation_limit")
         self.sway_dp_controller = PIDController(K_p, K_d, K_i, tau_sat)
 
-        # Initialize the depth controller
+        # Initialize the heave dp controller
         m = M_RB[2][2]+M_A[2][2]
         d = -rospy.get_param("/auv_dynamics/D")[2]
         k = 0 
@@ -62,7 +89,7 @@ class ControlSystem:
         zeta = rospy.get_param("/control_system/depth_controller/relative_damping_ratio")
         tau_sat = rospy.get_param("/control_system/depth_controller/torque_saturation_limit")
         K_p, K_d, K_i = self.heave_sub_system.pid_pole_placement_algorithm(omega_b, zeta)
-        self.depth_controller = PIDController(K_p, K_d, K_i, tau_sat)
+        self.heave_dp_controller = PIDController(K_p, K_d, K_i, tau_sat)
 
         # Initialize the heading controller
         m = M_RB[5][5]+M_A[5][5]
@@ -94,69 +121,95 @@ class ControlSystem:
         print((K_p, K_i))
         tau_sat = rospy.get_param("/control_system/sway_controller/torque_saturation_limit")
         self.sway_speed_controller = PIDController(K_p, 0, K_i, tau_sat)
-
-        # Initialize the reference model
-        eta = rospy.get_param("/initial_conditions/auv/eta")
-        nu = [0, 0, 1, 0, 0, 0]
-        delta = [1, 1, 1, 1, 1, 1]
-        omega = [self.surge_sub_system.omega_b*0.5, 
-                self.sway_sub_system.omega_b*0.5, 
-                self.heave_sub_system.omega_b*0.5,
-                1,
-                1, 
-                self.yaw_sub_system.omega_b*0.5]
-        # vel_limits = 
-        # acc_limits = 
-        print('Reference model natural frequency')
-        print(self.surge_sub_system.omega_b*0.5)
-        self.low_pass_filter = LowPassFilter(eta, omega, rospy.get_time())
-        self.mass_damper_spring_system = MassDamperSpringSystem(delta, omega)
         
     def pose_callback(self, msg):
         if self.get_pose:
-            self.eta = extract_eta_from_odom(msg)
-            self.nu = extract_nu_from_odom(msg)
+            self.eta = extract_from_pose(msg.pose.pose)
+            self.nu = extract_from_twist(msg.twist.twist)
             self.get_pose = False
         else:
             pass
-    
-    def input_callback(self, msg):
-        self.eta_r = extract_eta_from_odom(msg)
-        self.nu_r = extract_nu_from_odom(msg)
-        self.control_type = msg.child_frame_id
 
     def get_state_estimates(self):
         self.get_pose = True
         while self.get_pose:
             continue
 
-    def generate_trajectory(self):
-        if self.control_type == 'dp_control':
-            if not self.control_type == self.prev_control_type:
-                x = self.eta
-                self.mass_damper_spring_system.initialize(x, self.nu, rospy.get_time())
-                print('Enter dp mode')
-        r = self.low_pass_filter.simulate(self.eta_r, rospy.get_time())
-        if self.control_type == 'course_control':
-            if not self.control_type == self.prev_control_type:
-                x = self.eta
-                x[0:2] = self.nu[0:2]
-                self.mass_damper_spring_system.initialize(x, self.nu, rospy.get_time())
-                print('Enter course mode')
-            r[0:2] = self.nu_r[0:2]
-        eta_d, eta_dot_d, eta_ddot_d = self.mass_damper_spring_system.simulate(r, rospy.get_time())
-        return eta_d, eta_dot_d, eta_ddot_d
+    def reference_trajectory_callback(self, msg):
+        self.reference_trajectory = msg
+        self.traj_index = 0
 
-    def calculate_control_forces(self, eta_d, eta_dot_d, eta_ddot_d):
-        self.depth_controller.initialize(rospy.get_time())
+    def calculate_control_forces(self):
+        # todo
+
+        # Controllers: 
+        #   surge, sway, heave, roll, pitch, yaw-dp
+        #   surge, sway, heave-speed
+        #
+        # Control modes: 
+        #   dp_hold: eta_d | surge, sway, heave, roll, pitch, yaw-dp
+        #   dp_move: eta_d, nu_d, (nu_dot_d) | surge, sway, heave, roll, pitch, yaw-dp
+        #   course: eta_d[3:], nu_d, (nu_dot_d) | surge, sway, heave-speed, roll, pitch, yaw-dp
+        #   horizontal_course: eta_d[2:], nu_d, (nu_dot_d) | 
+        #   vertical_course: eta[0:2 and 3:], nu_d, (nu_dot_d)
+
+        # Get the current reference trajectory
+
+        if self.traj_index == len(self.reference_trajectory.poses):
+            self.traj_index += -1
+            control_mode = 'dp_hold' 
+        else:
+            control_mode = self.reference_trajectory.header.frame_id
+
+        pose = self.reference_trajectory.poses[self.traj_index].pose
+        twist = self.reference_trajectory.twists[self.traj_index].twist
+        accel = self.reference_trajectory.accels[self.traj_index].accel
+        self.traj_index += 1
+
+        euler_angles = euler_from_quaternion([pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w])
+        R = euler_matrix(0, 0, euler_angles[2])  # NB! Assumption that roll and pitch are zero for robustness, alternatively R = euler_matrix(euler_angles)
+        R = R[:3, :3]
+        '''
+        eta_d = extract_from_pose(pose)
+        nu_d = extract_from_twist(twist)
+        nu_dot_d = extract_from_accel(accel)
+        '''
+        # todo: figure out about switching between controllers
+        # if control_mode != self.prev_control_mode:
+            # Reinitialize the controllers if the control mode has changed
+            
+        self.surge_dp_controller.initialize(rospy.get_time())
+        self.sway_dp_controller.initialize(rospy.get_time())
         self.heading_controller.initialize(rospy.get_time())
-        tau_3_ref_ff = self.heave_sub_system.d * eta_dot_d[2] + self.heave_sub_system.m * eta_ddot_d[2]
-        tau_3 = tau_3_ref_ff + self.depth_controller.regulate((self.eta[2] - eta_d[2]), self.nu[2], rospy.get_time(), u_ff=23)                
-        tau_4 = 0
-        tau_5 = 0
-        tau_6_ref_ff = self.yaw_sub_system.d * eta_dot_d[5] + self.yaw_sub_system.m * eta_ddot_d[5]
-        tau_6 = tau_6_ref_ff + self.heading_controller.calculate_control_torque((self.eta[5] - eta_d[5]), self.nu[5], rospy.get_time())
-        if self.control_type == 'dp_control':
+        self.heave_dp_controller.initialize(rospy.get_time())
+
+        if control_mode == 'dp_hold':
+            eta_d = extract_from_pose(pose)
+            x_body_err, y_body_err, z_body_err = np.dot(R.T, [a - b for a, b in zip(self.eta[:3], eta_d[:3])])
+            tau_1 = self.surge_dp_controller.regulate(x_body_err, self.nu[0], rospy.get_time())
+            tau_2 = self.sway_dp_controller.regulate(y_body_err, self.nu[1], rospy.get_time())
+            tau_3 = self.heave_dp_controller.regulate(z_body_err, self.nu[2], rospy.get_time())
+            tau_4 = 0
+            tau_5 = 0
+            tau_6 = self.heading_controller.calculate_control_torque((self.eta[5] - eta_d[5]), self.nu[5], rospy.get_time())
+
+        if control_mode == 'dp_move':
+            eta_d = extract_from_pose(pose)
+            nu_d = extract_from_twist(twist)
+            nu_dot_d = extract_from_accel(accel)
+            x_body_err, y_body_err, z_body_err = np.dot(R.T, self.eta[:3] - eta_d[:3])
+            tau_1_ref_ff = self.D[0][0] * nu_d[0] + self.M[0][0] * nu_dot_d[0]
+            tau_1 = tau_1_ref_ff + self.surge_dp_controller.regulate(x_body_err, self.nu[0], rospy.get_time())
+            tau_2_ref_ff = self.D[1][1] * nu_d[1] + self.M[1][1] * nu_dot_d[1]
+            tau_2 = tau_1_ref_ff + self.surge_dp_controller.regulate(y_body_err, self.nu[1], rospy.get_time())
+            tau_3_ref_ff = self.D[2][2] * nu_d[2] + self.M[2][2] * nu_dot_d[2]
+            tau_3 = tau_3_ref_ff + self.heave_dp_controller.regulate(z_body_err, self.nu[2], rospy.get_time())                
+            tau_4 = 0
+            tau_5 = 0
+            tau_6_ref_ff = self.D[5][5] * nu_d[5] + self.M[5][5] * nu_dot_d[5]
+            tau_6 = tau_6_ref_ff + self.heading_controller.calculate_control_torque((self.eta[5] - eta_d[5]), self.nu[5], rospy.get_time())
+   
+        if control_mode == 'dp_control':
             if not self.control_type == self.prev_control_type:
                 self.surge_dp_controller.initialize(rospy.get_time())
                 self.sway_dp_controller.initialize(rospy.get_time())
@@ -166,31 +219,17 @@ class ControlSystem:
             tau_2_ned = tau_2_ned_ref_ff + self.sway_dp_controller.regulate((self.eta[1] - eta_d[1]), self.nu[1], rospy.get_time())
             tau_1 = math.cos(self.eta[5]) * tau_1_ned + math.sin(self.eta[5]) * tau_2_ned 
             tau_2 = - math.sin(self.eta[5]) * tau_1_ned + math.cos(self.eta[5]) * tau_2_ned
-            tau = [tau_1, tau_2, tau_3, tau_4, tau_5, tau_6]
 
-        elif self.control_type == 'course_control':
-            if not self.control_type == self.prev_control_type:
-                self.surge_speed_controller.initialize(rospy.get_time())
-                self.sway_speed_controller.initialize(rospy.get_time())
-            tau_1_ned_ref_ff = self.surge_sub_system.m * eta_dot_d[0]
-            tau_1_ned = self.surge_speed_controller.regulate((self.nu[0] - eta_d[0]), 0, rospy.get_time())
-            tau_2_ned_ref_ff = self.surge_sub_system.m * eta_dot_d[0]
-            tau_2_ned = self.sway_speed_controller.regulate((self.nu[1] - eta_d[1]), 0, rospy.get_time())
-            tau_1 = math.cos(self.eta[5]) * tau_1_ned + math.sin(self.eta[5]) * tau_2_ned
-            tau_2 = - math.sin(self.eta[5]) * tau_1_ned + math.cos(self.eta[5]) * tau_2_ned
-            tau = [tau_1, tau_2, tau_3, tau_4, tau_5, tau_6]
-
-        else:
-            tau = [0, 0, 0, 0, 0, 0]
-        self.prev_control_type = self.control_type
+        tau = [tau_1, tau_2, tau_3, tau_4, tau_5, tau_6]
+        self.prev_control_mode = control_mode
         return tau
 
     def publish_control_forces(self):
         while not rospy.is_shutdown():
             try:
                 self.get_state_estimates()
-                eta_d, eta_dot_d, eta_ddot_d = self.generate_trajectory()
-                tau = self.calculate_control_forces(eta_d, eta_dot_d, eta_ddot_d)
+                tau = self.calculate_control_forces()
+
                 msg = WrenchStamped()
                 msg.header.stamp = rospy.get_rostime()
                 msg.header.frame_id = "gladlaks/base_link_ned"
@@ -204,20 +243,23 @@ class ControlSystem:
                 self.pub.publish(msg)
             except rospy.ROSInterruptException:
                 pass
-        
-def extract_eta_from_odom(msg):
-    quaternions = msg.pose.pose.orientation
+
+
+def extract_from_pose(pose):
+    quaternions = pose.orientation
     euler_angles = euler_from_quaternion([quaternions.x, quaternions.y, quaternions.z, quaternions.w])
-    position = (msg.pose.pose.position.x, msg.pose.pose.position.y, msg.pose.pose.position.z)
-    eta = [position[0], position[1], position[2], euler_angles[0], euler_angles[1], euler_angles[2]]
-    return eta
+    position = (pose.position.x, pose.position.y, pose.position.z)
+    return [position[0], position[1], position[2], euler_angles[0], euler_angles[1], euler_angles[2]]
 
-def extract_nu_from_odom(msg):
-    linear = (msg.twist.twist.linear.x, msg.twist.twist.linear.y, msg.twist.twist.linear.z)
-    angular = (msg.twist.twist.angular.x, msg.twist.twist.angular.y, msg.twist.twist.angular.z)
-    nu = [linear[0], linear[1], linear[2], angular[0], angular[1], angular[2]]
-    return nu
+def extract_from_twist(twist):
+    linear = (twist.linear.x, twist.linear.y, twist.linear.z)
+    angular = (twist.angular.x, twist.angular.y, twist.angular.z)
+    return [linear[0], linear[1], linear[2], angular[0], angular[1], angular[2]]
 
+def extract_from_accel(accel):
+    linear = (accel.linear.x, accel.linear.y, accel.linear.z)
+    angular = (accel.angular.x, accel.angular.y, accel.angular.z)
+    return [linear[0], linear[1], linear[2], angular[0], angular[1], angular[2]]
 
 if __name__ == '__main__':
     try:
