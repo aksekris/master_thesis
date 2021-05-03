@@ -21,7 +21,6 @@ class ThrusterAllocation:
         self.pseudo_inv_matrix = np.dot(input_matrix_arr.T, np.linalg.inv(np.dot(input_matrix_arr, input_matrix_arr.T)))
 
     def callback(self, msg):
-
         tau_c = [0, 0, 0, 0, 0, 0]
         tau_c[0] = mgs.wrench.force.x
         tau_c[1] = mgs.wrench.force.y

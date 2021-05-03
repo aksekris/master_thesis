@@ -82,7 +82,6 @@ class PIDController(object):
 		self.prev_t = t
 		self.integral = 0
 
-
 	def regulate(self, x_err, x_dt, t, u_ff=0):
 		"""Calculate the controller output
 
