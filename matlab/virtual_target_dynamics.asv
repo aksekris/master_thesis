@@ -1,0 +1,9 @@
+clc
+clear all
+close all
+
+T = readtable('path1.csv');
+
+x = T.('x');
+y = T.('y');
+z = T.('z');

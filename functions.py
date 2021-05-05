@@ -2,6 +2,7 @@
 # Written by Aksel Kristoffersen
 
 import numpy as np
+from functools import wraps
 
 def get_gvect(m, g, r_g, r_b, rho, volume, eul):
     gvect = np.zeros(6)
@@ -53,7 +54,17 @@ def T_from_eul(eul):
 def J_from_eul(eul):
     return np.block([[R_from_eul(eul), np.zeros((3,3))], [np.zeros((3,3)), T_from_eul(eul)]])
 
-
-
 def euler2(dot_x, x, h):
     return x + dot_x*h
+
+def memoize(function):
+    memo = {}
+    @wraps(function)
+    def wrapper(*args):
+        try:
+            return memo[args]
+        except KeyError:
+            rv = function(*args)
+            memo[args] = rv
+            return rv
+    return wrapper

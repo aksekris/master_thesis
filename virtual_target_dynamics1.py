@@ -3,6 +3,7 @@
 # Documentation can be found in my master's thesis, chapter __ and __
 
 import numpy as np
+import pandas as pd
 from scipy.optimize import minimize
 from functions import euler2, J_from_eul
 from path import Path
@@ -78,6 +79,7 @@ class VirtualTarget():
             self.dot_s = sol.x[0]
         else:
             self.dot_s = 0
+            print(sol)
 
     def simulate_path_variables(self, t):
         h = t - self.t
@@ -97,10 +99,10 @@ class VirtualTarget():
         self.update_states()
         self.optimize_along_track_speed(eta, nu, dot_eta_c)
         self.simulate_path_variables(t)
-        return self.eta_t, self.nu_t(self.dot_s), self.dot_nu_t(self.dot_s)
+        return self.eta_t, self.nu_t(self.dot_s), self.dot_nu_t(self.dot_s), self.dot_s
 
 if __name__ == '__main__':
-    waypoints = [[0, 0, 0], [1, 0, 1], [0, 1, 0], [0, 0, 0]]
+    waypoints = [[0, 0, 0], [1, 1, 1], [0, 1, 0], [0, 0, 0]]
     path = Path()
     path.generate_G0_path(waypoints)
 
@@ -146,15 +148,27 @@ if __name__ == '__main__':
     nu = [0.1,0,0,0,0,0]
     dot_eta_c = [0,0,0,0,0,0]
 
-    virtual_target.optimize_along_track_speed(eta, nu, dot_eta_c)
+    data = {
+            't': [],
+            'x': [], 'y': [], 'z': [], 'psi': [], 'dot_s': []
+            }
+
     h = 0.01
-    N = 100
+    N = 500
     t = 0
     for i in range(N):
         t = i*h
-        eta_r, nu_r, dot_nu_r = virtual_target.generate_reference_trajectories(eta, nu, t)
+        eta_r, nu_r, dot_nu_r, dot_s = virtual_target.generate_reference_trajectories(eta, nu, t)
         eta = eta_r
         nu = nu_r
-        print(eta_r[1])
 
-    
+        data['t'].append(t)
+
+        data['x'].append(eta_r[0])
+        data['y'].append(eta_r[1])
+        data['z'].append(eta_r[2])
+        data['psi'].append(eta_r[5])
+        data['dot_s'].append(dot_s)
+
+    df = pd.DataFrame(data)
+    df.to_csv('matlab/virtual_target_dynamics1.csv')
