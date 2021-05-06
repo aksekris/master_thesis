@@ -1,0 +1,4 @@
+<launch>
+  <arg name="namespace" default="beluga/navigation_system" /> 
+  <node name="simulated_navigation" pkg="auv_navigation" type="simulated_navigation.py" ns="$(arg namespace)" />
+</launch>

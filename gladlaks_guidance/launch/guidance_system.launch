@@ -1,0 +1,5 @@
+<launch>
+  <arg name="namespace" default="gladlaks/guidance_system" /> 
+  <node name="guidance_system" pkg="gladlaks_guidance" type="guidance_system_node.py" ns="$(arg namespace)" output="screen" />
+</launch>
+

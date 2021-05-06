@@ -1,5 +1,5 @@
 thruster_manager:
-  tf_prefix: beluga
+  tf_prefix: gladlaks
   base_link: base_link
   thruster_topic_prefix: thrusters/
   thruster_topic_suffix: /input

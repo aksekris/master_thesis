@@ -1,0 +1,58 @@
+<launch>
+
+
+  <!-- Parameters of auv, both lines below are needed-->
+  <rosparam file="$(find auv_description)/config/beluga.yaml" command="load"/>
+  <arg name="param_file" default="$(find auv_description)/config/beluga.yaml"/>
+
+  <arg name="rviz_config_file" default="$(find auv_description)/rviz/config_file.rviz"/>
+  
+  <arg name="use_simulator" default="true"/>
+  <arg name="reset_tam" default="false"/>
+  <arg name="namespace" default="beluga"/>
+
+
+  <group if="$(arg use_simulator)">
+    <!-- Create World -->
+    <include file="$(find uuv_gazebo_worlds)/launch/lake.launch"/>
+
+    <!-- Spawn AUV -->
+    <include file="$(find auv_description)/launch/upload.launch">
+      <arg name="x"     value="0"/>
+      <arg name="y"     value="0"/>
+      <arg name="z"     value="0"/>
+      <arg name="roll"  value="0"/>
+      <arg name="pitch" value="0"/>
+      <arg name="yaw"   value="1.57"/>
+      <arg name="param_file" value="$(arg param_file)"/>
+    </include>
+
+    <!-- Start the control allocation node -->
+    <include file="$(find auv_guidance_and_control)/launch/start_thruster_manager.launch">
+      <arg name="reset_tam" value="$(arg reset_tam)"/>
+    </include>
+  </group>
+
+  <group unless="$(arg use_simulator)">
+    <!-- Start the control allocation node -->
+    <include file="$(find gladlaks_control)/launch/control_allocation.launch">
+      <arg name="namespace" value="$(arg namespace)/control_system"/>
+    </include>
+  </group>
+
+  <!-- Launch navigation system -->
+  <include file="$(find auv_navigation)/launch/auv_navigation.launch">
+    <arg name="namespace" value="$(arg namespace)/navigation_system"/>
+  </include>
+
+  <!-- Launch guidance and control system -->
+  <!--include file="$(find auv_guidance_and_control)/launch/guidance_and_control.launch">
+    <arg name="namespace" value="$(arg namespace)"/guidance_and_control_system>
+  </include--> 
+
+  <!-- Launch RViz -->
+  <include file="$(find auv_description)/launch/rviz.launch">
+    <arg name="rviz_config_file" value="$(arg rviz_config_file)"/>
+  </include>
+
+</launch>

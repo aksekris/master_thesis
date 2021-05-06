@@ -1,0 +1,5 @@
+
+<launch>
+  <arg name="rviz_config_file" default="$(find auv_description)/rviz/config_file.rviz"/>
+  <node type="rviz" name="rviz" pkg="rviz" args="-d $(arg rviz_config_file)" />
+</launch>
