@@ -27,6 +27,12 @@
       <arg name="param_file" value="$(arg param_file)"/>
     </include>
 
+    <include file="$(find uuv_control_utils)/launch/start_disturbance_manager.launch">
+      <arg name="uuv_name" value="$(arg namespace)"/>
+      <arg name="use_file" value="true"/>
+      <arg name="disturbance_file" value="$(find auv_description)/config/disturbances.yaml"/>
+    </include>
+
     <!-- Start the control allocation node -->
     <include file="$(find auv_guidance_and_control)/launch/start_thruster_manager.launch">
       <arg name="reset_tam" value="$(arg reset_tam)"/>

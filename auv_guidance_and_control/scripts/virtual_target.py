@@ -83,7 +83,6 @@ class VirtualTarget():
         if not hasattr(self, 't'):
             self.t = t
         h = t - self.t
-        print('h', h)
         dot_varpi = self.dot_s/self.path.length[self.path_index]
         self.varpi = euler2(dot_varpi, self.varpi, h)
         self.t = t
@@ -95,8 +94,6 @@ class VirtualTarget():
             else:
                 self.varpi = 1
                 self.dot_s = 0
-        print('varpi:', self.varpi)
-        print('path_index:', self.path_index)
 
     def generate_reference_trajectories(self, eta, nu, t, dot_eta_c=[0,0,0,0,0,0]):
         self.update_states()
